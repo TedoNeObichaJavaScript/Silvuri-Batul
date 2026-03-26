@@ -3,9 +3,8 @@ const http = require('http');
 const { Server } = require('socket.io');
 const cors = require('cors');
 const path = require('path');
-const { v4: uuidv4 } = require('uuid');
 const Game = require('./game');
-const { CARDS } = require('./cards');
+const { WARRIORS, RARITY_COLORS, RARITY_NAMES } = require('./cards');
 
 const app = express();
 const server = http.createServer(app);
@@ -20,37 +19,14 @@ const io = new Server(server, {
 app.use(cors());
 app.use(express.json());
 
-// Serve static files in production
 if (process.env.NODE_ENV === 'production') {
   app.use(express.static(path.join(__dirname, '../client/dist')));
 }
 
-// Active games
 const games = new Map();
-// Socket to game mapping
 const socketToGame = new Map();
 
-// --- REST API ---
-
-// Get all cards (for display purposes)
-app.get('/api/cards', (req, res) => {
-  res.json(CARDS);
-});
-
-// Create a new lobby
-app.post('/api/lobby', (req, res) => {
-  const code = generateLobbyCode();
-  res.json({ code });
-});
-
-// Get lobby info
-app.get('/api/lobby/:code', (req, res) => {
-  const game = games.get(req.params.code);
-  if (!game) return res.status(404).json({ error: 'Лобито не е намерено!' });
-  res.json(game.getPublicState());
-});
-
-// --- Socket.IO ---
+app.get('/api/cards', (req, res) => res.json({ warriors: WARRIORS, rarityColors: RARITY_COLORS, rarityNames: RARITY_NAMES }));
 
 io.on('connection', (socket) => {
   console.log(`Играч свързан: ${socket.id}`);
@@ -59,62 +35,30 @@ io.on('connection', (socket) => {
   socket.on('create_lobby', ({ playerName }, callback) => {
     const code = generateLobbyCode();
     const game = new Game(code, socket.id);
-    const result = game.addPlayer(socket.id, playerName);
-
-    if (result.error) {
-      callback({ error: result.error });
-      return;
-    }
-
+    game.addPlayer(socket.id, playerName);
     games.set(code, game);
     socketToGame.set(socket.id, code);
     socket.join(code);
-
-    callback({
-      success: true,
-      lobbyCode: code,
-      playerId: socket.id,
-      players: getPlayerList(game)
-    });
+    callback({ success: true, lobbyCode: code, playerId: socket.id, players: getPlayerList(game) });
   });
 
   // Join lobby
   socket.on('join_lobby', ({ lobbyCode, playerName }, callback) => {
     const code = lobbyCode.toUpperCase();
     const game = games.get(code);
-
-    if (!game) {
-      callback({ error: 'Лобито не е намерено!' });
-      return;
-    }
+    if (!game) return callback({ error: 'Лобито не е намерено!' });
 
     const result = game.addPlayer(socket.id, playerName);
-    if (result.error) {
-      callback({ error: result.error });
-      return;
-    }
+    if (result.error) return callback({ error: result.error });
 
     socketToGame.set(socket.id, code);
     socket.join(code);
-
     const players = getPlayerList(game);
-
-    // Notify others
-    socket.to(code).emit('player_joined', {
-      players,
-      newPlayer: { id: socket.id, name: playerName }
-    });
-
-    callback({
-      success: true,
-      lobbyCode: code,
-      playerId: socket.id,
-      hostId: game.hostId,
-      players
-    });
+    socket.to(code).emit('player_joined', { players, newPlayer: { id: socket.id, name: playerName } });
+    callback({ success: true, lobbyCode: code, playerId: socket.id, hostId: game.hostId, players });
   });
 
-  // Start game (host only)
+  // Start game → draft phase
   socket.on('start_game', (_, callback) => {
     const code = socketToGame.get(socket.id);
     const game = games.get(code);
@@ -124,125 +68,105 @@ io.on('connection', (socket) => {
     const result = game.startGame();
     if (result.error) return callback({ error: result.error });
 
-    // Send draft state to all players
+    // Send draft state to all
     io.to(code).emit('game_started', {
       state: 'draft',
-      draftPool: result.draftPool,
+      draftRolls: result.draftRolls,
       draftOrder: result.draftOrder,
-      currentPicker: result.currentPicker,
-      cardsPerPlayer: result.cardsPerPlayer
+      currentPicker: result.currentPicker
     });
 
-    // Send individual hands (empty at start)
-    for (const [playerId] of game.players) {
-      io.to(playerId).emit('your_hand', { hand: [] });
-    }
+    // Send options to first drafter only
+    io.to(result.currentPicker).emit('draft_options', { options: result.options });
 
     callback({ success: true });
   });
 
   // Draft pick
-  socket.on('draft_pick', ({ cardId }, callback) => {
+  socket.on('draft_pick', ({ warriorId }, callback) => {
     const code = socketToGame.get(socket.id);
     const game = games.get(code);
     if (!game) return callback({ error: 'Играта не е намерена!' });
 
-    const result = game.draftPick(socket.id, cardId);
+    const result = game.draftPick(socket.id, warriorId);
     if (result.error) return callback({ error: result.error });
 
-    // Notify all about the pick
-    io.to(code).emit('card_drafted', {
-      pickedCardId: result.pickedCard.id,
+    // Broadcast the pick
+    io.to(code).emit('warrior_picked', {
       pickedBy: result.pickedBy,
-      pickedByName: game.players.get(result.pickedBy).name,
+      pickedByName: result.pickedByName,
+      warrior: result.warrior,
       draftComplete: result.draftComplete,
-      nextPicker: result.nextPicker || null,
-      remainingPool: result.remainingPool || []
+      nextPicker: result.nextPicker || null
     });
-
-    // Send updated hand to the picker
-    const player = game.players.get(socket.id);
-    io.to(socket.id).emit('your_hand', { hand: player.hand });
 
     if (result.draftComplete) {
-      // Send hands to all players and start battle
-      for (const [playerId, p] of game.players) {
-        io.to(playerId).emit('your_hand', { hand: p.hand });
+      // Send private hands to each player
+      for (const [playerId] of game.players) {
+        const priv = game.getPlayerPrivateState(playerId);
+        io.to(playerId).emit('cards_dealt', { spells: priv.spells, counters: priv.counters });
       }
-      io.to(code).emit('phase_change', {
-        state: 'battle',
-        round: 1,
-        playerStates: game.getPlayerStates()
-      });
+
+      // Short delay then start battle
+      setTimeout(() => {
+        const roundData = game.startRound();
+        io.to(code).emit('battle_start', {
+          state: 'battle',
+          playerStates: game.getPlayerStates()
+        });
+        io.to(code).emit('round_start', roundData);
+
+        // Send private states
+        for (const [playerId] of game.players) {
+          io.to(playerId).emit('private_state', game.getPlayerPrivateState(playerId));
+        }
+      }, 2000);
+    } else {
+      // Send options to next drafter
+      io.to(result.nextPicker).emit('draft_options', { options: result.nextOptions });
     }
 
     callback({ success: true });
   });
 
-  // Submit battle action
-  socket.on('submit_action', ({ cardId, targetId }, callback) => {
+  // Submit turn action
+  socket.on('turn_action', ({ targetId, spellUid, counterUid }, callback) => {
     const code = socketToGame.get(socket.id);
     const game = games.get(code);
     if (!game) return callback({ error: 'Играта не е намерена!' });
 
-    const result = game.submitAction(socket.id, cardId, targetId);
+    const result = game.submitTurn(socket.id, targetId, spellUid || null, counterUid || null);
     if (result.error) return callback({ error: result.error });
 
-    // Notify all about how many are waiting
-    io.to(code).emit('action_submitted', {
-      playerId: socket.id,
-      waitingFor: result.waitingFor
+    // Broadcast turn result
+    io.to(code).emit('turn_result', {
+      results: result.results,
+      playerStates: result.playerStates,
+      nextTurn: result.nextTurn,
+      roundComplete: result.roundComplete,
+      gameOver: result.gameOver,
+      winner: result.winner
     });
 
-    // If all actions submitted, resolve the round
-    if (game.allActionsSubmitted()) {
+    // Send updated private states
+    for (const [playerId] of game.players) {
+      io.to(playerId).emit('private_state', game.getPlayerPrivateState(playerId));
+    }
+
+    if (result.gameOver) {
+      io.to(code).emit('game_over', { winner: result.winner, playerStates: result.playerStates });
+    } else if (result.roundComplete) {
+      // Start next round after delay
       setTimeout(() => {
-        const roundResult = game.resolveRound();
-
-        io.to(code).emit('round_result', roundResult);
-
-        // Send updated hands
-        for (const [playerId, p] of game.players) {
-          io.to(playerId).emit('your_hand', { hand: p.hand });
+        const roundData = game.startRound();
+        io.to(code).emit('round_start', roundData);
+        for (const [playerId] of game.players) {
+          io.to(playerId).emit('private_state', game.getPlayerPrivateState(playerId));
         }
-
-        if (roundResult.gameOver) {
-          io.to(code).emit('game_over', {
-            winner: roundResult.winner,
-            playerStates: roundResult.playerStates
-          });
-        }
-      }, 1500); // Small delay for dramatic effect
+      }, 3000);
     }
 
     callback({ success: true });
-  });
-
-  // Auto-submit for stunned players
-  socket.on('stun_acknowledge', (_, callback) => {
-    const code = socketToGame.get(socket.id);
-    const game = games.get(code);
-    if (!game) return;
-
-    if (game.allActionsSubmitted()) {
-      setTimeout(() => {
-        const roundResult = game.resolveRound();
-        io.to(code).emit('round_result', roundResult);
-
-        for (const [playerId, p] of game.players) {
-          io.to(playerId).emit('your_hand', { hand: p.hand });
-        }
-
-        if (roundResult.gameOver) {
-          io.to(code).emit('game_over', {
-            winner: roundResult.winner,
-            playerStates: roundResult.playerStates
-          });
-        }
-      }, 1500);
-    }
-
-    if (callback) callback({ success: true });
   });
 
   // Play again
@@ -251,18 +175,13 @@ io.on('connection', (socket) => {
     const game = games.get(code);
     if (!game) return;
 
-    // Reset game state
     const newGame = new Game(code, game.hostId);
     for (const [id, player] of game.players) {
       newGame.addPlayer(id, player.name);
     }
     games.set(code, newGame);
 
-    io.to(code).emit('phase_change', {
-      state: 'lobby',
-      players: getPlayerList(newGame)
-    });
-
+    io.to(code).emit('phase_change', { state: 'lobby', players: getPlayerList(newGame) });
     if (callback) callback({ success: true });
   });
 
@@ -271,51 +190,30 @@ io.on('connection', (socket) => {
     console.log(`Играч изключен: ${socket.id}`);
     const code = socketToGame.get(socket.id);
     if (!code) return;
-
     const game = games.get(code);
     if (!game) return;
 
     game.removePlayer(socket.id);
     socketToGame.delete(socket.id);
 
-    if (game.players.size === 0) {
-      games.delete(code);
-      return;
-    }
+    if (game.players.size === 0) { games.delete(code); return; }
+    if (game.hostId === socket.id) game.hostId = [...game.players.keys()][0];
 
-    // Transfer host if needed
-    if (game.hostId === socket.id) {
-      game.hostId = [...game.players.keys()][0];
-    }
-
-    io.to(code).emit('player_left', {
-      playerId: socket.id,
-      players: getPlayerList(game),
-      hostId: game.hostId
-    });
+    io.to(code).emit('player_left', { playerId: socket.id, players: getPlayerList(game), hostId: game.hostId });
   });
 });
 
 function getPlayerList(game) {
-  return [...game.players.entries()].map(([id, p]) => ({
-    id,
-    name: p.name,
-    isHost: id === game.hostId
-  }));
+  return [...game.players.entries()].map(([id, p]) => ({ id, name: p.name, isHost: id === game.hostId }));
 }
 
 function generateLobbyCode() {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   let code = '';
-  for (let i = 0; i < 6; i++) {
-    code += chars[Math.floor(Math.random() * chars.length)];
-  }
-  // Make sure it's unique
+  for (let i = 0; i < 6; i++) code += chars[Math.floor(Math.random() * chars.length)];
   if (games.has(code)) return generateLobbyCode();
   return code;
 }
 
 const PORT = process.env.PORT || 3001;
-server.listen(PORT, () => {
-  console.log(`🎮 Сървър Уорс работи на порт ${PORT}`);
-});
+server.listen(PORT, () => console.log(`Silvuri Batul running on port ${PORT}`));

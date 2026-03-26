@@ -2,52 +2,81 @@ import React from 'react';
 import Card from './Card';
 
 export default function Draft({
-  socket, playerId, draftPool, hand, currentPicker,
-  draftOrder, cardsPerPlayer, players, onError
+  socket, playerId, draftRolls, draftOrder,
+  currentPicker, setCurrentPicker, draftOptions, battleLog, onError
 }) {
   const isMyTurn = currentPicker === playerId;
   const pickerPlayer = draftOrder.find(p => p.id === currentPicker);
-  const pickerName = pickerPlayer?.name || '';
 
-  const pickCard = (card) => {
+  const pickWarrior = (card) => {
     if (!isMyTurn) return onError('Не е твой ред!');
-    socket.emit('draft_pick', { cardId: card.id }, (res) => {
+    socket.emit('draft_pick', { warriorId: card.id }, (res) => {
       if (res.error) return onError(res.error);
     });
   };
 
   return (
-    <div className="px-4 py-2 animate-slide-up">
+    <div className="px-4 py-4 animate-slide-up">
       {/* Header */}
       <div className="text-center mb-6">
-        <h2 className="text-2xl font-title text-purple-300 mb-2">
-          🎴 ДРАФТ ФАЗА
-        </h2>
-        <div className={`inline-block px-6 py-2 rounded-full text-lg font-bold ${isMyTurn ? 'bg-green-600/30 text-green-300 animate-glow-pulse border border-green-500/40' : 'bg-dark-700 text-gray-400 border border-gray-700'}`}>
-          {isMyTurn ? '🟢 ТВОЙ РЕД! Избери карта!' : `⏳ ${pickerName} избира...`}
-        </div>
-        <p className="text-sm text-gray-500 mt-2">Карти в ръка: {hand.length}/{cardsPerPlayer}</p>
-      </div>
+        <h2 className="text-2xl font-title text-accent-blue mb-2">PENTAD SELECTION</h2>
+        <p className="text-steel-400 text-sm mb-4">Избери своя воин от 5-те предложени</p>
 
-      {/* Draft Pool */}
-      <div className="mb-8">
-        <h3 className="text-sm text-gray-400 mb-3 uppercase tracking-wider">Налични Карти</h3>
-        <div className="flex flex-wrap gap-4 justify-center">
-          {draftPool.map(card => (
-            <Card key={card.id} card={card} onClick={pickCard} disabled={!isMyTurn} small />
-          ))}
+        <div className={`inline-block px-6 py-2 rounded-full text-lg font-bold ${
+          isMyTurn
+            ? 'bg-accent-blue/20 text-accent-blue animate-glow-pulse border border-accent-blue/40'
+            : 'bg-dark-700 text-steel-400 border border-steel-600/30'
+        }`}>
+          {isMyTurn ? 'ТВОЙ РЕД! Избери воин!' : `${pickerPlayer?.name || '...'} избира...`}
         </div>
       </div>
 
-      {/* Your Hand */}
-      {hand.length > 0 && (
-        <div className="border-t border-purple-500/20 pt-6">
-          <h3 className="text-sm text-gray-400 mb-3 uppercase tracking-wider">Твоята Ръка</h3>
-          <div className="flex flex-wrap gap-4 justify-center">
-            {hand.map(card => (
-              <Card key={card.id} card={card} small />
+      {/* Initiative Rolls */}
+      {draftRolls.length > 0 && (
+        <div className="mb-6 bg-dark-800 border border-steel-600/20 rounded-xl p-4 max-w-md mx-auto">
+          <h3 className="text-xs text-steel-400 uppercase tracking-wider mb-2 text-center">Ред на Избор (d20)</h3>
+          <div className="space-y-1">
+            {draftRolls.map((r, i) => (
+              <div key={r.id} className={`flex items-center justify-between px-3 py-1.5 rounded ${
+                r.id === currentPicker ? 'bg-accent-blue/10 text-accent-blue' : 'text-steel-400'
+              }`}>
+                <span className="text-sm font-bold">#{i + 1} {r.name}</span>
+                <span className="text-xs font-pixel">d20: {r.roll}</span>
+              </div>
             ))}
           </div>
+        </div>
+      )}
+
+      {/* Warrior Options */}
+      {isMyTurn && draftOptions.length > 0 && (
+        <div className="mb-8">
+          <h3 className="text-sm text-steel-400 mb-3 uppercase tracking-wider text-center">Твоите 5 Воина</h3>
+          <div className="flex flex-wrap gap-4 justify-center">
+            {draftOptions.map(card => (
+              <Card key={card.id} card={card} onClick={pickWarrior} />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Waiting message */}
+      {!isMyTurn && (
+        <div className="flex flex-col items-center justify-center py-12 gap-4">
+          <div className="w-10 h-10 border-4 border-accent-blue/30 border-t-accent-blue rounded-full animate-spin" />
+          <p className="text-steel-400">Чакаме {pickerPlayer?.name || '...'} да избере...</p>
+        </div>
+      )}
+
+      {/* Battle Log (draft picks) */}
+      {battleLog.length > 0 && (
+        <div className="mt-6 battle-log max-w-md mx-auto">
+          <h3 className="text-xs text-steel-400 uppercase tracking-wider mb-2">Лог</h3>
+          {battleLog.map((entry, i) => (
+            <div key={i} className={`log-entry log-${entry.type}`}>
+              <span>{entry.message}</span>
+            </div>
+          ))}
         </div>
       )}
     </div>

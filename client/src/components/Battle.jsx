@@ -1,181 +1,278 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Card from './Card';
+import { SpellCard } from './Card';
+
+const SEAT_ANGLES = [0, 45, 90, 135, 180, 225, 270, 315];
 
 export default function Battle({
-  socket, playerId, hand, playerStates, round,
-  roundResults, showResults, actionSubmitted, setActionSubmitted,
-  waitingFor, onError
+  socket, playerId, playerStates, round, initiative,
+  currentTurn, battleLog, spells, counters, turnResults,
+  roundComplete, onError
 }) {
-  const [selectedCard, setSelectedCard] = useState(null);
   const [selectedTarget, setSelectedTarget] = useState(null);
+  const [selectedSpell, setSelectedSpell] = useState(null);
+  const [selectedCounter, setSelectedCounter] = useState(null);
+  const [actionSubmitted, setActionSubmitted] = useState(false);
+  const logRef = useRef(null);
 
+  const isMyTurn = currentTurn === playerId;
   const myState = playerStates[playerId];
-  const opponents = Object.values(playerStates).filter(p => p.id !== playerId && !p.eliminated);
+  const allPlayers = Object.values(playerStates);
+  const opponents = allPlayers.filter(p => p.id !== playerId && !p.eliminated);
 
-  // Reset selections when new round starts
+  // Reset when turn changes
   useEffect(() => {
-    if (!showResults && !actionSubmitted) {
-      setSelectedCard(null);
+    if (isMyTurn) {
       setSelectedTarget(null);
+      setSelectedSpell(null);
+      setSelectedCounter(null);
+      setActionSubmitted(false);
     }
-  }, [round, showResults]);
+  }, [currentTurn]);
+
+  // Auto-scroll log
+  useEffect(() => {
+    if (logRef.current) logRef.current.scrollTop = logRef.current.scrollHeight;
+  }, [battleLog]);
 
   const submitAction = () => {
-    if (!selectedCard) return onError('Избери карта!');
     if (!selectedTarget) return onError('Избери цел!');
-    socket.emit('submit_action', { cardId: selectedCard.id, targetId: selectedTarget }, (res) => {
+    socket.emit('turn_action', {
+      targetId: selectedTarget,
+      spellUid: selectedSpell?.uid || null,
+      counterUid: selectedCounter?.uid || null
+    }, (res) => {
       if (res.error) return onError(res.error);
       setActionSubmitted(true);
-      setSelectedCard(null);
-      setSelectedTarget(null);
     });
   };
 
   // Stunned screen
-  if (myState?.stunned) {
-    socket.emit('stun_acknowledge');
+  if (myState?.stunned && isMyTurn) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="text-center animate-shake">
           <div className="text-7xl mb-4">💫</div>
           <h2 className="text-3xl font-title text-yellow-400 mb-2">ЗАШЕМЕТЕН!</h2>
-          <p className="text-gray-400">Пропускаш този рунд...</p>
+          <p className="text-steel-400">Пропускаш този рунд...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="px-4 py-2 animate-slide-up">
+    <div className="px-2 py-2 animate-slide-up">
       {/* Round Header */}
-      <div className="text-center mb-4">
-        <h2 className="text-2xl font-title text-red-400">⚔️ РУНД {round}</h2>
+      <div className="text-center mb-2">
+        <h2 className="text-xl font-title text-accent-blue">РУНД {round}</h2>
       </div>
 
-      {/* Player HP Bars */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 mb-6">
-        {Object.values(playerStates).map(p => {
-          const hpPct = (p.hp / p.maxHp) * 100;
-          const hpColor = hpPct > 50 ? 'bg-green-500' : hpPct > 25 ? 'bg-amber-500' : 'bg-red-500';
-          const isTarget = selectedTarget === p.id;
-          const isMe = p.id === playerId;
-
-          return (
-            <div
-              key={p.id}
-              onClick={() => {
-                if (!isMe && !p.eliminated && !actionSubmitted && !showResults) setSelectedTarget(p.id);
-              }}
-              className={`relative bg-dark-700 rounded-lg p-3 border-2 transition-all cursor-pointer
-                ${isMe ? 'border-purple-500/50' : isTarget ? 'border-red-500 shadow-[0_0_15px_rgba(239,68,68,0.4)]' : 'border-transparent hover:border-gray-600'}
-                ${p.eliminated ? 'opacity-40 cursor-default' : ''}`}
-            >
-              <div className="flex items-center justify-between mb-1.5">
-                <span className={`text-xs font-bold truncate ${isMe ? 'text-purple-300' : 'text-gray-300'}`}>
-                  {p.name} {isMe && '(ти)'}
-                  {p.stunned && ' 💫'}
-                </span>
-                <span className="text-[10px] text-gray-500">🎴 {p.cardsLeft}</span>
+      <div className="flex flex-col lg:flex-row gap-4">
+        {/* LEFT: Round Table */}
+        <div className="flex-1 flex justify-center">
+          <div className="round-table">
+            <div className="table-center">
+              <div className="text-center">
+                <div className="text-3xl font-title text-accent-blue">{round}</div>
+                <div className="text-[10px] text-steel-400 uppercase">РУНД</div>
               </div>
-
-              {/* HP Bar */}
-              <div className="hp-bar">
-                <div className={`hp-bar-fill ${hpColor}`} style={{ width: `${hpPct}%` }} />
-                <span className="hp-bar-text">{p.hp}/{p.maxHp}</span>
-              </div>
-
-              {/* Buffs */}
-              {(p.buffs?.atk > 0 || p.buffs?.def > 0) && (
-                <div className="flex gap-1 mt-1">
-                  {p.buffs.atk > 0 && <span className="text-[10px] text-red-400">+{p.buffs.atk}⚔️</span>}
-                  {p.buffs.def > 0 && <span className="text-[10px] text-blue-400">+{p.buffs.def}🛡️</span>}
-                </div>
-              )}
-
-              {/* Target indicator */}
-              {isTarget && (
-                <div className="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full animate-pulse">
-                  🎯 ЦЕЛ
-                </div>
-              )}
-              {p.eliminated && (
-                <div className="absolute inset-0 flex items-center justify-center bg-dark-900/60 rounded-lg">
-                  <span className="text-red-400 font-bold text-sm">💀 ЕЛИМИНИРАН</span>
-                </div>
-              )}
             </div>
-          );
-        })}
-      </div>
 
-      {/* Round Results Overlay */}
-      {showResults && roundResults && (
-        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
-          <div className="bg-dark-800 border border-purple-500/30 rounded-2xl p-6 max-w-lg w-full max-h-[80vh] overflow-y-auto animate-slide-up">
-            <h3 className="text-xl font-title text-center text-amber-400 mb-4">Резултати от Рунда</h3>
-            <div className="space-y-2">
-              {roundResults.results.map((r, i) => (
-                <div key={i} className={`result-entry result-${r.type}`} style={{ animationDelay: `${i * 0.15}s` }}>
-                  <span className="text-lg shrink-0">
-                    {r.type === 'attack' ? '💥' : r.type === 'miss' ? '💨' : r.type === 'blocked' ? '🛡️' :
-                     r.type === 'heal' ? '💚' : r.type === 'reflect' ? '🪞' : r.type === 'ability' ? '✨' :
-                     r.type === 'locked' ? '🔒' : r.type === 'heal_enemy' ? '😱' : '⚡'}
-                  </span>
-                  <span className="text-sm text-gray-200">{r.message}</span>
+            {allPlayers.map((p, i) => {
+              const angle = SEAT_ANGLES[i] || 0;
+              const hpPct = (p.hp / p.maxHp) * 100;
+              const hpColor = hpPct > 50 ? '#22c55e' : hpPct > 25 ? '#f59e0b' : '#ef4444';
+              const isTarget = selectedTarget === p.id;
+              const isMe = p.id === playerId;
+              const isTurn = currentTurn === p.id;
+
+              return (
+                <div
+                  key={p.id}
+                  className={`table-seat ${isTurn ? 'active-turn' : ''}`}
+                  style={{ '--angle': `${angle}deg` }}
+                  onClick={() => {
+                    if (!isMe && !p.eliminated && isMyTurn && !actionSubmitted) {
+                      setSelectedTarget(p.id);
+                    }
+                  }}
+                >
+                  {/* Target indicator */}
+                  {isTarget && (
+                    <div className="absolute -top-3 text-xs bg-red-500 text-white px-2 py-0.5 rounded-full animate-pulse z-10">
+                      TARGET
+                    </div>
+                  )}
+
+                  {/* Avatar */}
+                  <div className={`seat-avatar ${p.eliminated ? 'eliminated' : ''} ${isMe ? '!border-accent-blue/60' : ''} ${isTarget ? '!border-red-500' : ''}`}>
+                    {p.warrior ? (
+                      <img src={p.warrior.image} alt="" className="w-full h-full rounded-full object-cover" />
+                    ) : (
+                      <span>{p.name[0]}</span>
+                    )}
+                  </div>
+
+                  {/* Name */}
+                  <div className={`text-[10px] font-bold mt-0.5 truncate max-w-[90px] text-center ${
+                    isMe ? 'text-accent-blue' : isTurn ? 'text-white' : 'text-steel-400'
+                  }`}>
+                    {p.name} {isMe && '(ти)'}
+                  </div>
+
+                  {/* HP Bar */}
+                  <div className="seat-hp">
+                    <div className="seat-hp-bar">
+                      <div className="seat-hp-fill" style={{ width: `${hpPct}%`, backgroundColor: hpColor }} />
+                    </div>
+                    <div className="text-[8px] text-center text-steel-400">{p.hp}/{p.maxHp}</div>
+                  </div>
+
+                  {/* Status icons */}
+                  <div className="flex gap-0.5 text-[10px] mt-0.5">
+                    {p.stunned && <span title="Зашеметен">💫</span>}
+                    {p.poisoned && <span title="Отровен">☠️</span>}
+                    {p.shielded && <span title="Щит">🛡️</span>}
+                    {p.hasCounter && <span title="Контра">⚡</span>}
+                    {p.frozen && <span title="Замразен">❄️</span>}
+                    {p.eliminated && <span>💀</span>}
+                  </div>
                 </div>
-              ))}
-              {roundResults.eliminations?.map((e, i) => (
-                <div key={`e-${i}`} className="result-entry result-elimination">
-                  <span className="text-lg">💀</span>
-                  <span className="text-sm">{e.name} е ЕЛИМИНИРАН!</span>
-                </div>
-              ))}
-            </div>
+              );
+            })}
           </div>
         </div>
-      )}
 
-      {/* Your Hand */}
-      {!actionSubmitted && !showResults && (
-        <div>
-          <h3 className="text-sm text-gray-400 mb-3 uppercase tracking-wider text-center">
-            Избери карта за атака
-          </h3>
-          <div className="flex flex-wrap gap-4 justify-center mb-6">
-            {hand.map(card => (
-              <Card
-                key={card.id}
-                card={card}
-                selected={selectedCard?.id === card.id}
-                onClick={(c) => setSelectedCard(c)}
-              />
+        {/* RIGHT: Battle Log */}
+        <div className="lg:w-80 flex flex-col gap-3">
+          {/* Initiative */}
+          {initiative.length > 0 && (
+            <div className="bg-dark-800 border border-steel-600/20 rounded-xl p-3">
+              <h3 className="text-xs text-steel-400 uppercase tracking-wider mb-2">Инициатива</h3>
+              <div className="space-y-1">
+                {initiative.map((i, idx) => (
+                  <div key={i.id} className={`flex justify-between text-xs px-2 py-1 rounded ${
+                    currentTurn === i.id ? 'bg-accent-blue/10 text-accent-blue' : 'text-steel-400'
+                  }`}>
+                    <span>#{idx + 1} {i.name}</span>
+                    <span className="font-pixel text-[10px]">{i.total}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Log */}
+          <div className="battle-log" ref={logRef}>
+            <h3 className="text-xs text-steel-400 uppercase tracking-wider mb-2 sticky top-0 bg-dark-800/80">Бойен Лог</h3>
+            {battleLog.slice(-20).map((entry, i) => (
+              <div key={i} className={`log-entry log-${entry.type}`}>
+                <span className="text-[11px]">{entry.message}</span>
+              </div>
             ))}
           </div>
+        </div>
+      </div>
 
-          {selectedCard && selectedTarget && (
+      {/* Bottom: Action Panel */}
+      {!myState?.eliminated && (
+        <div className="mt-4 border-t border-steel-600/20 pt-4">
+          {/* Turn indicator */}
+          <div className="text-center mb-3">
+            {isMyTurn && !actionSubmitted ? (
+              <span className="inline-block px-4 py-1.5 rounded-full bg-accent-blue/20 text-accent-blue font-bold text-sm animate-pulse border border-accent-blue/30">
+                ТВОЙ ХОД — Избери цел и действие!
+              </span>
+            ) : roundComplete ? (
+              <span className="text-steel-400 text-sm">Рундът приключи. Следващ рунд зарежда...</span>
+            ) : (
+              <span className="text-steel-400 text-sm">
+                Ход на: {allPlayers.find(p => p.id === currentTurn)?.name || '...'}
+              </span>
+            )}
+          </div>
+
+          {/* My Warrior */}
+          {myState?.warrior && (
+            <div className="flex justify-center mb-4">
+              <Card card={myState.warrior} small />
+            </div>
+          )}
+
+          {/* Spell & Counter Hand */}
+          {isMyTurn && !actionSubmitted && (
+            <div className="flex flex-col lg:flex-row gap-4 justify-center items-start mb-4">
+              {/* Spells */}
+              {spells.length > 0 && (
+                <div>
+                  <h4 className="text-xs text-blue-400 uppercase tracking-wider mb-2 text-center">Spell Карти</h4>
+                  <div className="flex gap-2 justify-center flex-wrap">
+                    {spells.map(s => (
+                      <SpellCard
+                        key={s.uid}
+                        spell={s}
+                        selected={selectedSpell?.uid === s.uid}
+                        onClick={(sp) => setSelectedSpell(selectedSpell?.uid === sp.uid ? null : sp)}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Counters */}
+              {counters.length > 0 && (
+                <div>
+                  <h4 className="text-xs text-amber-400 uppercase tracking-wider mb-2 text-center">Counter Карти</h4>
+                  <div className="flex gap-2 justify-center flex-wrap">
+                    {counters.map(c => (
+                      <SpellCard
+                        key={c.uid}
+                        spell={c}
+                        isCounter
+                        selected={selectedCounter?.uid === c.uid}
+                        onClick={(ct) => setSelectedCounter(selectedCounter?.uid === ct.uid ? null : ct)}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Submit */}
+          {isMyTurn && !actionSubmitted && selectedTarget && (
             <div className="text-center">
-              <button className="btn-game btn-primary text-lg px-10 py-4 relative" onClick={submitAction}>
-                ⚔️ АТАКУВАЙ с {selectedCard.name}!
+              <button className="btn-game btn-primary text-lg px-10 py-3 relative" onClick={submitAction}>
+                АТАКУВАЙ {allPlayers.find(p => p.id === selectedTarget)?.name}!
+                {selectedSpell && ` + ${selectedSpell.name}`}
                 <span className="btn-shine" />
               </button>
             </div>
           )}
 
-          {selectedCard && !selectedTarget && (
-            <p className="text-center text-amber-400 animate-pulse">Избери цел от играчите по-горе!</p>
+          {isMyTurn && !actionSubmitted && !selectedTarget && (
+            <p className="text-center text-accent-blue/60 text-sm animate-pulse">Кликни на противник от масата за цел</p>
           )}
 
-          {!selectedCard && (
-            <p className="text-center text-gray-500">Избери карта от ръката си</p>
+          {actionSubmitted && (
+            <div className="flex flex-col items-center py-4 gap-2">
+              <div className="w-8 h-8 border-4 border-accent-blue/30 border-t-accent-blue rounded-full animate-spin" />
+              <p className="text-steel-400 text-sm">Действие изпратено!</p>
+            </div>
           )}
         </div>
       )}
 
-      {/* Waiting */}
-      {actionSubmitted && !showResults && (
-        <div className="flex flex-col items-center justify-center py-12 gap-4">
-          <div className="w-10 h-10 border-4 border-purple-500/30 border-t-purple-500 rounded-full animate-spin" />
-          <p className="text-gray-400">Чакаме останалите играчи... ({waitingFor} останали)</p>
+      {/* Turn Results Overlay */}
+      {turnResults && turnResults.length > 0 && (
+        <div className="fixed bottom-4 right-4 z-40 bg-dark-800/95 border border-accent-blue/20 rounded-xl p-4 max-w-sm animate-slide-up backdrop-blur-sm">
+          <div className="space-y-1">
+            {turnResults.map((r, i) => (
+              <div key={i} className={`result-entry result-${r.type}`} style={{ animationDelay: `${i * 0.1}s` }}>
+                <span className="text-sm">{r.message}</span>
+              </div>
+            ))}
+          </div>
         </div>
       )}
     </div>

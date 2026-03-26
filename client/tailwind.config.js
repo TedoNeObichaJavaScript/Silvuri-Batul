@@ -10,16 +10,27 @@ export default {
       },
       colors: {
         card: {
-          common: '#b0b0b0',
-          rare: '#4a90d9',
-          epic: '#a855f7',
+          common: '#8a9bb0',
+          rare: '#3b82f6',
+          epic: '#8b5cf6',
           legendary: '#f59e0b',
+          secret: '#dc2626',
+          cosmic: '#ff00ff',
         },
         dark: {
-          900: '#0a0a0f',
-          800: '#12121a',
-          700: '#1a1a2e',
-          600: '#24243e',
+          900: '#0b0e14',
+          800: '#111827',
+          700: '#1a2236',
+          600: '#243049',
+        },
+        steel: {
+          400: '#94a3b8',
+          500: '#64748b',
+          600: '#475569',
+        },
+        accent: {
+          blue: '#00b4ff',
+          glow: '#38bdf8',
         }
       },
       animation: {
@@ -31,11 +42,14 @@ export default {
         'particle': 'particle 4s ease-in-out infinite',
         'shine': 'shine 2s ease-in-out infinite',
         'card-enter': 'card-enter 0.3s ease-out',
+        'cosmic-glow': 'cosmic-glow 2s ease-in-out infinite',
+        'pulse-ring': 'pulse-ring 1.5s ease-out infinite',
+        'turn-glow': 'turn-glow 1s ease-in-out infinite',
       },
       keyframes: {
         'glow-pulse': {
-          '0%, 100%': { boxShadow: '0 0 20px rgba(168, 85, 247, 0.4)' },
-          '50%': { boxShadow: '0 0 40px rgba(168, 85, 247, 0.8)' },
+          '0%, 100%': { boxShadow: '0 0 20px rgba(0, 180, 255, 0.3)' },
+          '50%': { boxShadow: '0 0 40px rgba(0, 180, 255, 0.6)' },
         },
         'float': {
           '0%, 100%': { transform: 'translateY(0)' },
@@ -65,6 +79,18 @@ export default {
         'card-enter': {
           '0%': { opacity: '0', transform: 'scale(0.8) rotateY(20deg)' },
           '100%': { opacity: '1', transform: 'scale(1) rotateY(0)' },
+        },
+        'cosmic-glow': {
+          '0%, 100%': { boxShadow: '0 0 15px #ff00ff, 0 0 30px #00b4ff' },
+          '50%': { boxShadow: '0 0 30px #00b4ff, 0 0 60px #ff00ff' },
+        },
+        'pulse-ring': {
+          '0%': { transform: 'scale(1)', opacity: '1' },
+          '100%': { transform: 'scale(1.5)', opacity: '0' },
+        },
+        'turn-glow': {
+          '0%, 100%': { boxShadow: '0 0 10px rgba(0,180,255,0.4)' },
+          '50%': { boxShadow: '0 0 25px rgba(0,180,255,0.8)' },
         },
       }
     },
