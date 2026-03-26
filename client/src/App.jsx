@@ -138,7 +138,7 @@ export default function App() {
   }, []);
 
   return (
-    <div className="min-h-screen relative">
+    <div className={`h-screen relative flex flex-col ${phase === 'battle' ? 'overflow-hidden' : 'overflow-y-auto'}`}>
       {/* Particles */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
         {[...Array(12)].map((_, i) => (
@@ -172,7 +172,7 @@ export default function App() {
       )}
 
       {/* Main */}
-      <main className="relative z-10 max-w-7xl mx-auto pb-8">
+      <main className={`relative z-10 max-w-7xl mx-auto ${phase === 'battle' ? 'flex-1 min-h-0 overflow-hidden' : 'pb-8'}`}>
         {phase === 'lobby' && (
           <Lobby socket={socket} playerId={playerId} playerName={playerName} setPlayerName={setPlayerName}
             lobbyCode={lobbyCode} setLobbyCode={setLobbyCode} hostId={hostId} setHostId={setHostId}

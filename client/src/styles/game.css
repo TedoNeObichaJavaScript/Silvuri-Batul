@@ -106,36 +106,36 @@
   /* ========== ROUND TABLE ========== */
   .round-table {
     @apply relative mx-auto;
-    width: 600px;
-    height: 600px;
+    width: min(50vh, 480px);
+    height: min(50vh, 480px);
   }
   @media (max-width: 768px) {
-    .round-table { width: 360px; height: 360px; }
-    .table-seat { transform: rotate(var(--angle)) translateY(-140px) rotate(calc(-1 * var(--angle))) !important; }
+    .round-table { width: min(55vh, 340px); height: min(55vh, 340px); }
+    .table-seat { transform: rotate(var(--angle)) translateY(min(-22vh, -130px)) rotate(calc(-1 * var(--angle))) !important; }
   }
   .table-center {
     @apply absolute rounded-full flex items-center justify-center;
     top: 50%; left: 50%;
     transform: translate(-50%, -50%);
-    width: 200px; height: 200px;
+    width: min(16vh, 160px); height: min(16vh, 160px);
     background: radial-gradient(circle, rgba(0,180,255,0.08), transparent 70%);
     border: 1px solid rgba(0,180,255,0.15);
   }
   @media (max-width: 768px) {
-    .table-center { width: 120px; height: 120px; }
+    .table-center { width: min(14vh, 100px); height: min(14vh, 100px); }
   }
   .table-seat {
     @apply absolute flex flex-col items-center;
     top: 50%; left: 50%;
-    margin-top: -50px; margin-left: -50px;
-    width: 100px;
-    transform: rotate(var(--angle)) translateY(-230px) rotate(calc(-1 * var(--angle)));
+    margin-top: -40px; margin-left: -45px;
+    width: 90px;
+    transform: rotate(var(--angle)) translateY(min(-20vh, -190px)) rotate(calc(-1 * var(--angle)));
   }
   .table-seat.active-turn {
     animation: turn-glow 1s ease-in-out infinite;
   }
   .seat-avatar {
-    @apply w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-lg border-2 transition-all;
+    @apply w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-base border-2 transition-all;
     background: linear-gradient(135deg, #1a2236, #243049);
     border-color: rgba(148, 163, 184, 0.3);
   }
@@ -196,10 +196,10 @@
 
   /* ========== BATTLE LOG ========== */
   .battle-log {
-    @apply bg-dark-800/80 border border-steel-600/20 rounded-xl p-3 max-h-60 overflow-y-auto backdrop-blur-sm;
+    @apply bg-dark-800/80 border border-steel-600/20 rounded-xl p-2 overflow-y-auto backdrop-blur-sm;
   }
   .log-entry {
-    @apply flex items-start gap-2 py-1.5 px-2 text-xs rounded animate-slide-up;
+    @apply flex items-start gap-1 py-1 px-1.5 text-[10px] rounded animate-slide-up;
   }
   .log-entry.log-attack { @apply text-red-300; }
   .log-entry.log-heal { @apply text-green-300; }
