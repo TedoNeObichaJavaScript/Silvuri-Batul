@@ -141,7 +141,7 @@ class Game {
     // Clear temporary debuffs from last round
     for (const [, p] of this.players) {
       p.debuffs = { atk: 0 };
-      if (p.frozen) { p.frozen = false; p.stunned = false; }
+      if (p.frozen) { p.frozen = false; }
     }
 
     // Roll initiative
@@ -267,7 +267,9 @@ class Game {
         case 'aoe_damage':
           for (const [, p] of this.players) {
             if (p.id !== socketId && !p.eliminated) {
-              p.hp -= spell.value;
+              const aoeDef = p.warrior ? p.warrior.def + (p.buffs.def || 0) : 0;
+              const aoeDmg = Math.max(0, spell.value - aoeDef);
+              p.hp -= aoeDmg;
               if (p.hp <= 0) { p.hp = 0; p.eliminated = true; }
             }
           }
@@ -315,8 +317,13 @@ class Game {
 
     // Check target's counter
     if (actualTargetPlayer.activeCounter && !spellNegated) {
-      counter = actualTargetPlayer.activeCounter;
-      actualTargetPlayer.activeCounter = null;
+      // Don't waste spell_negate counter if attacker used no spell
+      if (actualTargetPlayer.activeCounter.type === 'spell_negate' && !spell) {
+        // Keep the counter active — nothing to negate
+      } else {
+        counter = actualTargetPlayer.activeCounter;
+        actualTargetPlayer.activeCounter = null;
+      }
     }
 
     // Check if counter negates spell
