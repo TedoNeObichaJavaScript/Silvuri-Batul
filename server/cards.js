@@ -45,8 +45,20 @@ const WARRIORS = [
     atk: 4, def: 7,
     ability: { name: 'Подслушване', description: 'Краде 1 случайна контра от противника.', type: 'counter_steal' }
   },
+  {
+    id: 'muaythaya', name: 'Муай Тай', title: 'Уличният Боец',
+    image: '/images/cards/muaythaya.jpg', rarity: 'common',
+    atk: 7, def: 4,
+    ability: { name: 'Коляно', description: '+3 бонус щети и 30% шанс за стън.', type: 'knee_strike', bonusDmg: 3, stunChance: 0.3 }
+  },
+  {
+    id: 'pavlinsublaznitelniq', name: 'Павлин Съблазнителния', title: 'Чарът на Магазина',
+    image: '/images/cards/pavlinsublaznitelniq.jpg', rarity: 'common',
+    atk: 5, def: 5,
+    ability: { name: 'Чар', description: '35% шанс целта да удари себе си за половин щети.', type: 'charm', chance: 0.35 }
+  },
 
-  // ===== RARE (7) =====
+  // ===== RARE (10) =====
   {
     id: 'antoniopie', name: 'Антонио Пие', title: 'Вечният Купонджия',
     image: '/images/cards/antoniopie.png', rarity: 'rare',
@@ -89,8 +101,26 @@ const WARRIORS = [
     atk: 7, def: 4,
     ability: { name: 'Газ до Дупка', description: 'Бонус щети = 20% от текущия HP на целта.', type: 'ram', hpPercent: 0.2 }
   },
+  {
+    id: 'pavlinchimaev', name: 'Павлин Чимаев', title: 'Борецът',
+    image: '/images/cards/pavlinchimaev.jpg', rarity: 'rare',
+    atk: 7, def: 6,
+    ability: { name: 'Тейкдаун', description: 'Зашеметява целта и нанася +2 бонус щети.', type: 'takedown', bonusDmg: 2 }
+  },
+  {
+    id: 'teodormuaythaya', name: 'Теодор Муай Тай', title: 'Ударът от Сянката',
+    image: '/images/cards/teodormuaythaya.jpg', rarity: 'rare',
+    atk: 7, def: 5,
+    ability: { name: 'Комбо Удар', description: 'Намалява DEF на целта с 3 завинаги.', type: 'def_shred', shredValue: 3 }
+  },
+  {
+    id: 'vulkutotkarnobatstreet', name: 'Вулкът от Карнобат Стрийт', title: 'Уолстрийт Измамникът',
+    image: '/images/cards/vulkutotkarnobatstreet.jpg', rarity: 'rare',
+    atk: 5, def: 6,
+    ability: { name: 'Схемата', description: 'Краде 1 spell от целта и +3 бонус щети.', type: 'scheme', bonusDmg: 3 }
+  },
 
-  // ===== EPIC (6) =====
+  // ===== EPIC (8) =====
   {
     id: 'antoniopashata', name: 'Антонио Пашата', title: 'Огледалният Силвър',
     image: '/images/cards/antoniopashata.png', rarity: 'epic',
@@ -127,8 +157,20 @@ const WARRIORS = [
     atk: 7, def: 4,
     ability: { name: 'Предсмъртен Удар', description: 'При под 25% HP: удвоява всички щети.', type: 'desperation', thresholds: [{ percent: 0.5, bonus: 4 }, { percent: 0.25, bonus: 10 }] }
   },
+  {
+    id: 'iliqnsnaipera', name: 'Илиян Снайпера', title: 'Точният Изстрел',
+    image: '/images/cards/iliqnsnaipera.jpg', rarity: 'epic',
+    atk: 9, def: 2,
+    ability: { name: 'Точен Изстрел', description: 'Игнорира 100% от DEF на целта.', type: 'sniper' }
+  },
+  {
+    id: 'mafiaborko', name: 'Мафия Борко', title: 'Кръстникът',
+    image: '/images/cards/mafiaborko.jpg', rarity: 'epic',
+    atk: 8, def: 5,
+    ability: { name: 'Поръчка', description: 'Маркира целта: +8 бонус щети ако я атакуваш отново.', type: 'contract', bonusDmg: 8 }
+  },
 
-  // ===== LEGENDARY (2) =====
+  // ===== LEGENDARY (3) =====
   {
     id: 'bezkuchki', name: 'Без Кучки', title: 'Тихият Хакер',
     image: '/images/cards/bezkuchki.png', rarity: 'legendary',
@@ -140,6 +182,12 @@ const WARRIORS = [
     image: '/images/cards/calofdutigrost.png', rarity: 'legendary',
     atk: 9, def: 2,
     ability: { name: '360 No Scope', description: 'Най-висока инициатива = двойни щети.', type: 'speed_kill', multiplier: 2 }
+  },
+  {
+    id: 'muaythayaIglavata', name: 'Муай Тай и Главата', title: 'Тагтиймът',
+    image: '/images/cards/muaythayaIglavata.jpg', rarity: 'legendary',
+    atk: 6, def: 6,
+    ability: { name: 'Тагтийм', description: 'Удря два пъти по 75% щети.', type: 'tag_team', hitMultiplier: 0.75 }
   },
 
   // ===== SECRET (2) — ~5% chance to appear in draft =====
@@ -214,6 +262,46 @@ const COUNTERS = [
   { id: 'pocherpka', name: 'почерпка', description: 'Превръща до 10 щети в HP.', type: 'absorb', maxAbsorb: 10, iconColor: '#4caf50' },
   { id: 'vsichko_se_vrushta', name: 'всичко се връща', description: 'Получаваш щети, но връщаш двойно (макс 15).', type: 'vengeance', multiplier: 2, maxReturn: 15, iconColor: '#9c27b0' },
   { id: 'edin_za_vsichki', name: 'един за всички', description: 'При 5+ щети: 5 на всички врагове.', type: 'chain_react', threshold: 5, damage: 5, chain: true, iconColor: '#ff9800' }
+];
+
+// ===== SUPPORT CARDS (6) — picked after warrior draft =====
+const SUPPORT_CARDS = [
+  {
+    id: 'supportkreicho', name: 'Крейчо', title: 'Верният Другар',
+    image: '/images/cards/supportkreicho.jpg',
+    description: 'Лекува 3 HP в началото на всеки рунд.',
+    type: 'heal_per_round', value: 3
+  },
+  {
+    id: 'supportteodorsdjandaka', name: 'Теодор с Джанката', title: 'Въоръжен до Зъби',
+    image: '/images/cards/supportteodorsdjandaka.jpg',
+    description: '+3 ATK завинаги.',
+    type: 'permanent_atk', value: 3
+  },
+  {
+    id: 'supportstarshitoizbra', name: 'Старшият Избра', title: 'Гласът на Мъдростта',
+    image: '/images/cards/supportstarshitoizbra.jpg',
+    description: '+1 допълнителна контра на всеки рунд.',
+    type: 'extra_counter', value: 1
+  },
+  {
+    id: 'supportscarymarin', name: 'Страшният Марин', title: 'Плашещата Аура',
+    image: '/images/cards/supportscarymarin.jpg',
+    description: '+2 DEF завинаги.',
+    type: 'permanent_def', value: 2
+  },
+  {
+    id: 'supportteodortate', name: 'Теодор Тате', title: 'Връзки по Високите Места',
+    image: '/images/cards/supportteodortate.jpg',
+    description: '+1 допълнително заклинание на всеки рунд.',
+    type: 'extra_spell', value: 1
+  },
+  {
+    id: 'supportpavlinsrednqka', name: 'Павлин Средняка', title: 'Неубиваемият',
+    image: '/images/cards/supportpavlinsrednqka.png',
+    description: '+8 HP бонус (увеличава максималните HP).',
+    type: 'hp_boost', value: 8
+  }
 ];
 
 const RARITY_COLORS = {
@@ -298,4 +386,4 @@ function dealCounters(count = 1) {
   return hand;
 }
 
-module.exports = { WARRIORS, SPELLS, COUNTERS, RARITY_COLORS, RARITY_NAMES, RARITY_WEIGHTS, generateDraftOptions, dealSpells, dealCounters };
+module.exports = { WARRIORS, SPELLS, COUNTERS, SUPPORT_CARDS, RARITY_COLORS, RARITY_NAMES, RARITY_WEIGHTS, generateDraftOptions, dealSpells, dealCounters };
