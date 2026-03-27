@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import Card, { SpellCard, SpellIcon } from './Card';
+import { assetUrl } from '../utils/assetUrl';
 
 const SEAT_ANGLES = [0, 45, 90, 135, 180, 225, 270, 315];
 
@@ -158,7 +159,7 @@ export default function Battle({
             <div className="flex items-center justify-center gap-3 my-3">
               {counterPrompt.attackerWarrior && (
                 <img
-                  src={counterPrompt.attackerWarrior.image}
+                  src={assetUrl(counterPrompt.attackerWarrior.image)}
                   alt=""
                   className="w-14 h-14 rounded-full border-2 border-red-500/60 shadow-lg shadow-red-500/20 object-cover"
                 />
@@ -270,7 +271,7 @@ export default function Battle({
 
                   <div className={`seat-avatar ${p.eliminated ? 'eliminated' : ''} ${isMe ? 'ring-accent' : ''} ${isTarget ? 'ring-target' : ''} ${isAnimAttacker ? 'anim-attacker-glow' : ''} ${p.banned ? 'banned-avatar' : ''}`}>
                     {p.warrior ? (
-                      <img src={p.warrior.image} alt="" className="w-full h-full rounded-full object-cover" />
+                      <img src={assetUrl(p.warrior.image)} alt="" className="w-full h-full rounded-full object-cover" />
                     ) : (
                       <span>{p.name[0]}</span>
                     )}
@@ -316,7 +317,7 @@ export default function Battle({
                   {turnAnim.action.attackerWarrior && (
                     <div className="anim-card-display">
                       <img
-                        src={turnAnim.action.attackerWarrior.image}
+                        src={assetUrl(turnAnim.action.attackerWarrior.image)}
                         alt=""
                         className={`w-20 h-20 rounded-xl object-cover border-2 shadow-lg ${
                           turnAnim.action.attackerWarrior.rarity === 'owner'
@@ -406,7 +407,7 @@ export default function Battle({
                   {turnAnim.action.targetWarrior && (
                     <div className="anim-card-display">
                       <img
-                        src={turnAnim.action.targetWarrior.image}
+                        src={assetUrl(turnAnim.action.targetWarrior.image)}
                         alt=""
                         className={`w-20 h-20 rounded-xl object-cover border-2 shadow-lg ${
                           turnAnim.phase === 'impact' ? 'border-red-500/80 shadow-red-500/30 animate-shake' : 'border-red-500/40 shadow-red-500/10'
@@ -488,7 +489,7 @@ export default function Battle({
               {/* Warrior info (mobile fallback) */}
               {myState?.warrior && (
                 <div className="lg:hidden flex items-center gap-2 bg-dark-800/60 rounded-lg px-2 py-1 border border-steel-600/20">
-                  <img src={myState.warrior.image} alt="" className="w-8 h-8 rounded-full object-cover border border-steel-600/30" />
+                  <img src={assetUrl(myState.warrior.image)} alt="" className="w-8 h-8 rounded-full object-cover border border-steel-600/30" />
                   <div>
                     <div className="text-[10px] font-bold text-white">{myState.warrior.name}</div>
                     <div className="text-[9px] text-steel-400">
@@ -548,7 +549,7 @@ export default function Battle({
             </div>
           ) : myState?.warrior ? (
             <div className="flex items-center justify-center gap-2 py-2">
-              <img src={myState.warrior.image} alt="" className="w-7 h-7 rounded-full object-cover border border-steel-600/30" />
+              <img src={assetUrl(myState.warrior.image)} alt="" className="w-7 h-7 rounded-full object-cover border border-steel-600/30" />
               <span className="text-[11px] text-steel-400">{myState.warrior.name}</span>
             </div>
           ) : null}

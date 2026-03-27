@@ -1,4 +1,5 @@
 import React, { memo } from 'react';
+import { assetUrl } from '../utils/assetUrl';
 
 const RARITY_COLORS = {
   common: '#8a9bb0',
@@ -71,7 +72,7 @@ const Card = memo(function Card({ card, onClick, selected, disabled, small }) {
       </div>
 
       <div className="card-img-wrap">
-        <img src={card.image} alt={card.name} loading="lazy" />
+        <img src={assetUrl(card.image)} alt={card.name} loading="lazy" />
       </div>
 
       <div className="px-2 py-1 text-center">
