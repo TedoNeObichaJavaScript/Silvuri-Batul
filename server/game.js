@@ -1,4 +1,4 @@
-const { WARRIORS, generateDraftOptions, dealSpells, dealCounters } = require('./cards');
+const { WARRIORS, SUPPORT_CARDS, generateDraftOptions, dealSpells, dealCounters } = require('./cards');
 
 class Game {
   constructor(lobbyCode, hostId) {
@@ -51,7 +51,9 @@ class Game {
       immune: false,
       bans: 0,
       banned: false,
-      eliminated: false
+      eliminated: false,
+      nextTurnAtkBonus: 0,
+      supportCard: null
     });
     return { success: true, playerCount: this.players.size };
   }
@@ -112,13 +114,9 @@ class Game {
     const draftComplete = this.draftIndex >= this.players.size;
 
     if (draftComplete) {
-      // Deal 2 spells and 1 counter initially
-      for (const [, p] of this.players) {
-        p.spells = dealSpells(2);
-        p.counters = dealCounters(1);
-      }
-      this.state = 'battle';
-      this.round = 0;
+      // Move to support card draft phase
+      this.state = 'support_draft';
+      this.supportPicks = new Set();
     }
 
     return {
@@ -129,6 +127,53 @@ class Game {
       draftComplete,
       nextPicker: draftComplete ? null : this.draftOrder[this.draftIndex],
       nextOptions: draftComplete ? null : generateDraftOptions(this.takenWarriors)
+    };
+  }
+
+  // ===== SUPPORT DRAFT =====
+
+  supportPick(socketId, supportId) {
+    if (this.state !== 'support_draft') return { error: 'Не сме в саппорт драфт!' };
+    if (this.supportPicks.has(socketId)) return { error: 'Вече си избрал саппорт!' };
+
+    const card = SUPPORT_CARDS.find(c => c.id === supportId);
+    if (!card) return { error: 'Невалиден саппорт!' };
+
+    const player = this.players.get(socketId);
+    if (!player) return { error: 'Играчът не е намерен!' };
+
+    player.supportCard = { ...card };
+    this.supportPicks.add(socketId);
+
+    // Apply immediate permanent effects
+    if (card.type === 'permanent_atk') {
+      player.permanentBuffs.atk += card.value;
+    }
+    if (card.type === 'permanent_def') {
+      player.permanentBuffs.def += card.value;
+    }
+    if (card.type === 'hp_boost') {
+      player.hp += card.value;
+      player.maxHpBonus = card.value;
+    }
+
+    const allPicked = this.supportPicks.size >= this.players.size;
+    if (allPicked) {
+      // Deal initial spells and counters, then move to battle
+      for (const [, p] of this.players) {
+        p.spells = dealSpells(2);
+        p.counters = dealCounters(1);
+      }
+      this.state = 'battle';
+      this.round = 0;
+    }
+
+    return {
+      success: true,
+      supportCard: card,
+      pickedBy: socketId,
+      pickedByName: player.name,
+      allPicked
     };
   }
 
@@ -157,10 +202,31 @@ class Game {
       }
     }
 
+    // Apply support card effects
+    for (const [, p] of this.players) {
+      if (p.eliminated || !p.supportCard) continue;
+      if (p.supportCard.type === 'heal_per_round') {
+        const effectiveMax = this.maxHp + (p.maxHpBonus || 0);
+        const healAmt = Math.min(p.supportCard.value, effectiveMax - p.hp);
+        if (healAmt > 0) {
+          p.hp += healAmt;
+          this.battleLog.push({ type: 'heal', playerName: p.name, message: `💚 ${p.name} се лекува за ${healAmt} HP (${p.supportCard.name})!` });
+        }
+      }
+      if (p.supportCard.type === 'extra_counter') {
+        p.counters.push(...dealCounters(1));
+      }
+      if (p.supportCard.type === 'extra_spell') {
+        p.spells.push(...dealSpells(1));
+      }
+    }
+
     // Clear temporary debuffs, immunity, decrement silence, decay ATK reduction
+    // Reset DEF buffs (spell DEF boosts expire each round)
     for (const [, p] of this.players) {
       p.debuffs = { atk: 0 };
       p.immune = false;
+      p.buffs.def = 0;
       if (p.frozen) { p.frozen = false; }
       if (p.silenced > 0) { p.silenced--; }
       if (p.atkReduction.rounds > 0) {
@@ -171,14 +237,43 @@ class Game {
       }
     }
 
-    // Roll initiative (pure d6, no SPD)
+    // Apply buff_next at start of round (Полковник Вики: +ATK +DEF for this round)
+    for (const [, p] of this.players) {
+      if (p.eliminated || !p.warrior) continue;
+      if (p.warrior.ability.type === 'buff_next') {
+        p.buffs.atk += p.warrior.ability.buffAtk;
+        p.buffs.def += p.warrior.ability.buffDef;
+      }
+    }
+
+    // Turn order: d6 initiative on round 1, then cycle
     const alive = this.getAlivePlayers();
-    this.initiative = alive.map(p => {
-      const roll = Math.floor(Math.random() * 6) + 1;
-      return { id: p.id, name: p.name, roll, total: roll };
-    });
-    this.initiative.sort((a, b) => b.total - a.total);
-    this.turnOrder = this.initiative.map(i => i.id);
+
+    if (this.round === 1) {
+      // First round: roll d6 for initiative
+      this.initiative = alive.map(p => {
+        const roll = Math.floor(Math.random() * 6) + 1;
+        return { id: p.id, name: p.name, roll, total: roll };
+      });
+      this.initiative.sort((a, b) => b.total - a.total);
+      this.turnOrder = this.initiative.map(i => i.id);
+    } else {
+      // Subsequent rounds: rotate previous order, skip eliminated
+      const prevOrder = this.turnOrder;
+      const aliveOrder = prevOrder.filter(id => {
+        const p = this.players.get(id);
+        return p && !p.eliminated;
+      });
+      if (aliveOrder.length > 1) {
+        aliveOrder.push(aliveOrder.shift());
+      }
+      this.turnOrder = aliveOrder;
+      this.initiative = aliveOrder.map(id => {
+        const p = this.players.get(id);
+        return { id, name: p.name, roll: null, total: null };
+      });
+    }
+
     this.currentTurnIndex = 0;
 
     // Skip stunned/frozen players
@@ -230,6 +325,9 @@ class Game {
       }
     }
 
+    // Re-check incapacitated after owner/cosmic abilities may have eliminated/stunned players
+    this.skipIncapacitated();
+
     // Check if poison or cosmic burst ended the game
     const aliveAfter = this.getAlivePlayers();
     let gameOver = false;
@@ -237,6 +335,18 @@ class Game {
       gameOver = true;
       this.state = 'gameOver';
       this.winner = aliveAfter.length === 1 ? aliveAfter[0] : null;
+
+      // Early return — no need to set up turns for a finished game
+      return {
+        round: this.round,
+        initiative: [],
+        turnOrder: [],
+        currentTurn: null,
+        battleLog: this.battleLog,
+        playerStates: this.getPlayerStates(),
+        gameOver: true,
+        winner: this.winner ? { id: this.winner.id, name: this.winner.name, hp: this.winner.hp } : null
+      };
     }
 
     return {
@@ -246,8 +356,8 @@ class Game {
       currentTurn: this.turnOrder[this.currentTurnIndex] || null,
       battleLog: this.battleLog,
       playerStates: this.getPlayerStates(),
-      gameOver,
-      winner: this.winner ? { id: this.winner.id, name: this.winner.name, hp: this.winner.hp } : null
+      gameOver: false,
+      winner: null
     };
   }
 
@@ -296,8 +406,8 @@ class Game {
     }
 
     // Pre-attack spell effects
-    let atkBonus = attacker.buffs.atk - attacker.debuffs.atk;
-    let defBonus = attacker.buffs.def;
+    let atkBonus = attacker.buffs.atk + (attacker.nextTurnAtkBonus || 0) - attacker.debuffs.atk;
+    attacker.nextTurnAtkBonus = 0;
     let doubleHit = false;
     let redirectTarget = null;
 
@@ -306,7 +416,10 @@ class Game {
 
       switch (spell.type) {
         case 'atk_boost': atkBonus += spell.value; break;
-        case 'def_boost': defBonus += spell.value; break;
+        case 'def_boost':
+          attacker.buffs.def += spell.value;
+          results.push({ type: 'buff', playerName: attacker.name, message: `🛡️ ${attacker.name} получава +${spell.value} DEF за този рунд!` });
+          break;
         case 'heal':
           attacker.hp = Math.min(this.maxHp, attacker.hp + spell.value);
           results.push({ type: 'heal', playerName: attacker.name, heal: spell.value, message: `💚 ${attacker.name} лекува ${spell.value} HP!` });
@@ -392,7 +505,6 @@ class Game {
       targetId: actualTargetPlayer.id,
       spell,
       atkBonus,
-      defBonus,
       doubleHit,
       preResults: results,
       warrior
@@ -422,8 +534,9 @@ class Game {
     const attacker = this.players.get(pending.attackerId);
     const actualTargetPlayer = this.players.get(pending.targetId);
     const results = [...pending.preResults];
-    let { atkBonus, defBonus, doubleHit, spell, warrior } = pending;
+    let { atkBonus, doubleHit, spell, warrior } = pending;
     let spellNegated = false;
+    let dodged = false;
 
     // Apply counter if provided
     let counter = null;
@@ -450,20 +563,11 @@ class Game {
       results.push({ type: 'ability', message: `🐱 Котешки Щит блокира НАПЪЛНО атаката на ${attacker.name}!` });
 
       // Still advance turn
-      attacker.buffs = { atk: 0, def: 0 };
+      attacker.buffs.atk = 0;
       if (!actualTargetPlayer.eliminated) actualTargetPlayer.immune = true;
       this.currentTurnIndex++;
       this.skipIncapacitated();
       const roundComplete = this.currentTurnIndex >= this.turnOrder.length;
-      if (roundComplete) {
-        for (const [, p] of this.players) {
-          if (p.eliminated || !p.warrior) continue;
-          if (p.warrior.ability.type === 'buff_next') {
-            p.buffs.atk += p.warrior.ability.buffAtk;
-            p.buffs.def += p.warrior.ability.buffDef;
-          }
-        }
-      }
       const alive = this.getAlivePlayers();
       let gameOver = false;
       if (alive.length <= 1) { gameOver = true; this.state = 'gameOver'; this.winner = alive.length === 1 ? alive[0] : null; }
@@ -481,20 +585,11 @@ class Game {
       if (Math.random() < actualTargetPlayer.warrior.ability.missChance) {
         results.push({ type: 'miss', playerName: attacker.name, message: `💨 Димна Завеса! ${attacker.name} промахва ${actualTargetPlayer.name}!` });
 
-        attacker.buffs = { atk: 0, def: 0 };
+        attacker.buffs.atk = 0;
         if (!actualTargetPlayer.eliminated) actualTargetPlayer.immune = true;
         this.currentTurnIndex++;
         this.skipIncapacitated();
         const roundComplete = this.currentTurnIndex >= this.turnOrder.length;
-        if (roundComplete) {
-          for (const [, p] of this.players) {
-            if (p.eliminated || !p.warrior) continue;
-            if (p.warrior.ability.type === 'buff_next') {
-              p.buffs.atk += p.warrior.ability.buffAtk;
-              p.buffs.def += p.warrior.ability.buffDef;
-            }
-          }
-        }
         const alive = this.getAlivePlayers();
         let gameOver = false;
         if (alive.length <= 1) { gameOver = true; this.state = 'gameOver'; this.winner = alive.length === 1 ? alive[0] : null; }
@@ -513,7 +608,13 @@ class Game {
     // Calculate damage
     const reductionMultiplier = attacker.atkReduction?.multiplier || 1;
     const effectiveAtk = Math.max(0, Math.floor((warrior.atk + atkBonus + attacker.permanentBuffs.atk) * reductionMultiplier));
-    let targetDef = actualTargetPlayer.warrior ? actualTargetPlayer.warrior.def + (actualTargetPlayer.buffs.def || 0) + (actualTargetPlayer.permanentBuffs.def || 0) + defBonus : 0;
+    let targetDef = actualTargetPlayer.warrior ? actualTargetPlayer.warrior.def + (actualTargetPlayer.buffs.def || 0) + (actualTargetPlayer.permanentBuffs.def || 0) : 0;
+
+    // Sniper — full DEF ignore (Илиян Снайпера)
+    if (warrior.ability.type === 'sniper') {
+      targetDef = 0;
+      results.push({ type: 'ability', message: `🎯 Точен Изстрел игнорира ЦЕЛИЯ DEF!` });
+    }
 
     // Armor pierce (Борко Мусашито)
     if (warrior.ability.type === 'armor_pierce') {
@@ -535,6 +636,16 @@ class Game {
       baseDamage = Math.max(warrior.ability.minDamage, baseDamage);
     }
 
+    // Contract bonus (Мафия Борко) — bonus damage if attacking marked target
+    if (attacker.contractTarget === actualTargetPlayer.id) {
+      const contractBonus = warrior.ability.type === 'contract' ? warrior.ability.bonusDmg : 0;
+      if (contractBonus > 0) {
+        baseDamage += contractBonus;
+        results.push({ type: 'ability', message: `🔫 Поръчка изпълнена! +${contractBonus} бонус щети на ${actualTargetPlayer.name}!` });
+      }
+      attacker.contractTarget = null;
+    }
+
     // Apply warrior ability (attacker)
     const abilityResults = this.applyWarriorAbility(attacker, actualTargetPlayer, baseDamage, spell);
     baseDamage = abilityResults.damage;
@@ -544,6 +655,7 @@ class Game {
     if (counter && !spellNegated) {
       const counterResults = this.applyCounter(counter, attacker, actualTargetPlayer, baseDamage);
       baseDamage = counterResults.damage;
+      if (counterResults.dodged) dodged = true;
       results.push(...counterResults.results);
     }
 
@@ -553,8 +665,8 @@ class Game {
       results.push({ type: 'attack', playerName: attacker.name, targetName: actualTargetPlayer.name, damage: baseDamage, message: `⚔️ ${warrior.name} нанася ${baseDamage} щети на ${actualTargetPlayer.name}!` });
     }
 
-    // Double hit
-    if (doubleHit && !spellNegated) {
+    // Double hit (blocked by dodge and spell negate)
+    if (doubleHit && !spellNegated && !dodged) {
       const secondDmg = Math.max(1, effectiveAtk - targetDef - cosmicShield);
       actualTargetPlayer.hp -= secondDmg;
       results.push({ type: 'attack', playerName: attacker.name, targetName: actualTargetPlayer.name, damage: secondDmg, message: `🤜 ляв десен! Още ${secondDmg} щети!` });
@@ -596,7 +708,8 @@ class Game {
     }
 
     // Clear temp buffs for this player
-    attacker.buffs = { atk: 0, def: 0 };
+    // Only reset ATK buff (DEF persists through the round for defense)
+    attacker.buffs.atk = 0;
 
     // Grant immunity to the attacked target (can't be attacked again this round)
     if (!actualTargetPlayer.eliminated) {
@@ -640,17 +753,6 @@ class Game {
 
     const roundComplete = this.currentTurnIndex >= this.turnOrder.length;
     let gameOver = false;
-
-    if (roundComplete) {
-      // Apply buff_next for players who have it
-      for (const [, p] of this.players) {
-        if (p.eliminated || !p.warrior) continue;
-        if (p.warrior.ability.type === 'buff_next') {
-          p.buffs.atk += p.warrior.ability.buffAtk;
-          p.buffs.def += p.warrior.ability.buffDef;
-        }
-      }
-    }
 
     // Check win
     const alive = this.getAlivePlayers();
@@ -717,8 +819,8 @@ class Game {
 
       case 'heal_and_buff':
         attacker.hp = Math.min(this.maxHp, attacker.hp + ability.healValue);
-        attacker.buffs.atk += ability.buffValue;
-        results.push({ type: 'heal', message: `🍻 На Здраве! ${attacker.name} лекува ${ability.healValue} HP и +${ability.buffValue} ATK!` });
+        attacker.nextTurnAtkBonus = (attacker.nextTurnAtkBonus || 0) + ability.buffValue;
+        results.push({ type: 'heal', message: `🍻 На Здраве! ${attacker.name} лекува ${ability.healValue} HP и +${ability.buffValue} ATK следващ ход!` });
         break;
 
       case 'full_block':
@@ -841,6 +943,70 @@ class Game {
         break;
       }
 
+      case 'knee_strike':
+        damage += ability.bonusDmg;
+        if (Math.random() < ability.stunChance) {
+          target.stunned = true;
+          results.push({ type: 'ability', message: `🦵 Коляно! +${ability.bonusDmg} щети и ${target.name} е зашеметен!` });
+        } else {
+          results.push({ type: 'ability', message: `🦵 Коляно! +${ability.bonusDmg} бонус щети!` });
+        }
+        break;
+
+      case 'charm':
+        if (Math.random() < ability.chance) {
+          const selfDmg = Math.floor(damage / 2);
+          target.hp -= selfDmg;
+          results.push({ type: 'ability', message: `😻 Чар! ${target.name} удря себе си за ${selfDmg} щети!` });
+          damage = 0;
+          damageHandled = true;
+        } else {
+          results.push({ type: 'ability', message: `😻 Чарът не подейства!` });
+        }
+        break;
+
+      case 'takedown':
+        target.stunned = true;
+        damage += ability.bonusDmg;
+        results.push({ type: 'ability', message: `🤼 Тейкдаун! ${target.name} е зашеметен! +${ability.bonusDmg} щети!` });
+        break;
+
+      case 'def_shred':
+        if (target.warrior) {
+          target.warrior.def = Math.max(0, target.warrior.def - ability.shredValue);
+          results.push({ type: 'ability', message: `👊 Комбо Удар! ${target.name} губи ${ability.shredValue} DEF завинаги!` });
+        }
+        break;
+
+      case 'scheme':
+        damage += ability.bonusDmg;
+        if (target.spells.length > 0) {
+          const stolenIdx = Math.floor(Math.random() * target.spells.length);
+          const stolen = target.spells.splice(stolenIdx, 1)[0];
+          attacker.spells.push(stolen);
+          results.push({ type: 'ability', message: `💼 Схемата: ${attacker.name} краде ${stolen.name} и +${ability.bonusDmg} щети!` });
+        } else {
+          results.push({ type: 'ability', message: `💼 Схемата: +${ability.bonusDmg} бонус щети!` });
+        }
+        break;
+
+      case 'tag_team':
+        const hit1 = Math.floor(damage * ability.hitMultiplier);
+        const hit2 = Math.floor(damage * ability.hitMultiplier);
+        target.hp -= hit1;
+        target.hp -= hit2;
+        results.push({ type: 'attack', playerName: attacker.name, targetName: target.name, damage: hit1, message: `🤜 Тагтийм удар 1: ${hit1} щети!` });
+        results.push({ type: 'attack', playerName: attacker.name, targetName: target.name, damage: hit2, message: `🤛 Тагтийм удар 2: ${hit2} щети!` });
+        damageHandled = true;
+        break;
+
+      case 'contract':
+        // Mark the target — bonus damage if we attack them again
+        attacker.contractTarget = target.id;
+        results.push({ type: 'ability', message: `🔫 Поръчка: ${target.name} е маркиран! +${ability.bonusDmg} щети при следваща атака!` });
+        break;
+
+      // sniper is handled in resolveTurn (replaces DEF calculation)
       // guaranteed_dmg, armor_pierce, counter_steal, ram, owner_admin are handled elsewhere
     }
 
@@ -849,6 +1015,7 @@ class Game {
 
   applyCounter(counter, attacker, target, damage) {
     const results = [];
+    let dodged = false;
 
     switch (counter.type) {
       case 'reflect':
@@ -860,6 +1027,7 @@ class Game {
       case 'dodge':
         if (Math.random() < counter.chance) {
           damage = 0;
+          dodged = true;
           results.push({ type: 'counter', playerName: target.name, message: `🌪️ фиууу! ${target.name} избягва атаката!` });
         } else {
           results.push({ type: 'counter', playerName: target.name, message: `🌪️ фиууу... НЕУСПЕШНО!` });
@@ -892,7 +1060,7 @@ class Game {
         break;
     }
 
-    return { damage, results };
+    return { damage, results, dodged };
   }
 
   // ===== HELPERS =====
@@ -905,7 +1073,7 @@ class Game {
     const states = {};
     for (const [id, p] of this.players) {
       states[id] = {
-        id: p.id, name: p.name, hp: p.hp, maxHp: this.maxHp,
+        id: p.id, name: p.name, hp: p.hp, maxHp: this.maxHp + (p.maxHpBonus || 0),
         warrior: p.warrior ? {
           id: p.warrior.id, name: p.warrior.name, title: p.warrior.title,
           image: p.warrior.image, rarity: p.warrior.rarity,
@@ -924,7 +1092,8 @@ class Game {
         banned: p.banned,
         bans: p.bans,
         buffs: { ...p.buffs },
-        permanentBuffs: { ...p.permanentBuffs }
+        permanentBuffs: { ...p.permanentBuffs },
+        supportCard: p.supportCard ? { id: p.supportCard.id, name: p.supportCard.name, description: p.supportCard.description, image: p.supportCard.image } : null
       };
     }
     return states;

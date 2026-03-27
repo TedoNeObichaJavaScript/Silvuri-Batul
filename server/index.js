@@ -4,7 +4,7 @@ const { Server } = require('socket.io');
 const cors = require('cors');
 const path = require('path');
 const Game = require('./game');
-const { WARRIORS, RARITY_COLORS, RARITY_NAMES } = require('./cards');
+const { WARRIORS, SUPPORT_CARDS, RARITY_COLORS, RARITY_NAMES } = require('./cards');
 
 const app = express();
 const server = http.createServer(app);
@@ -125,7 +125,13 @@ function broadcastTurnResult(code, game, result) {
     setTimeout(() => {
       const roundData = game.startRound();
       if (roundData.gameOver) {
-        io.to(code).emit('round_start', roundData);
+        // Emit game_over directly — don't emit round_start to avoid glitchy battle state
+        if (roundData.battleLog && roundData.battleLog.length > 0) {
+          io.to(code).emit('turn_result', {
+            action: null, results: roundData.battleLog, playerStates: roundData.playerStates,
+            nextTurn: null, roundComplete: false, gameOver: true, winner: roundData.winner
+          });
+        }
         io.to(code).emit('game_over', { winner: roundData.winner, playerStates: roundData.playerStates });
       } else {
         io.to(code).emit('round_start', roundData);
@@ -226,6 +232,37 @@ io.on('connection', (socket) => {
     });
 
     if (result.draftComplete) {
+      // Move to support card draft — send options to all players
+      setTimeout(() => {
+        io.to(code).emit('support_draft_start', { supportCards: SUPPORT_CARDS });
+      }, 1500);
+    } else {
+      // Send options to next drafter
+      io.to(result.nextPicker).emit('draft_options', { options: result.nextOptions });
+    }
+
+    callback({ success: true });
+  });
+
+  // Support card pick
+  socket.on('support_pick', ({ supportId }, callback) => {
+    if (typeof callback !== 'function') return;
+    const code = socketToGame.get(socket.id);
+    const game = games.get(code);
+    if (!game) return callback({ error: 'Играта не е намерена!' });
+
+    const result = game.supportPick(socket.id, supportId);
+    if (result.error) return callback({ error: result.error });
+
+    // Broadcast the pick to all
+    io.to(code).emit('support_picked', {
+      pickedBy: result.pickedBy,
+      pickedByName: result.pickedByName,
+      supportCard: result.supportCard,
+      allPicked: result.allPicked
+    });
+
+    if (result.allPicked) {
       // Send private hands to each player
       for (const [playerId] of game.players) {
         const priv = game.getPlayerPrivateState(playerId);
@@ -244,16 +281,12 @@ io.on('connection', (socket) => {
         if (roundData.gameOver) {
           io.to(code).emit('game_over', { winner: roundData.winner, playerStates: roundData.playerStates });
         } else {
-          // Send private states
           for (const [playerId] of game.players) {
             io.to(playerId).emit('private_state', game.getPlayerPrivateState(playerId));
           }
           startTurnTimer(code, game);
         }
       }, 2000);
-    } else {
-      // Send options to next drafter
-      io.to(result.nextPicker).emit('draft_options', { options: result.nextOptions });
     }
 
     callback({ success: true });
