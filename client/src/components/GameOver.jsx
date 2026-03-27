@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useEffect } from 'react';
+import { SFX } from '../utils/sounds';
 
 const CONFETTI_COLORS = ['#00b4ff', '#38bdf8', '#22c55e', '#ef4444', '#8b5cf6'];
 
@@ -6,6 +7,11 @@ export default function GameOver({ socket, winner, playerStates, playerId }) {
   const isWinner = winner?.id === playerId;
   const sortedPlayers = Object.values(playerStates).sort((a, b) => b.hp - a.hp);
   const playAgain = () => socket.emit('play_again');
+
+  useEffect(() => {
+    if (isWinner) SFX.victory();
+    else SFX.elimination();
+  }, []);
 
   return (
     <div className="flex items-center justify-center min-h-[70vh] relative">
@@ -32,7 +38,7 @@ export default function GameOver({ socket, winner, playerStates, playerId }) {
             </h2>
             <p className="text-steel-400">HP: {winner.hp}</p>
             {winner.warrior && (
-              <p className="text-sm text-accent-blue/60 mt-1">Воин: {winner.warrior}</p>
+              <p className="text-sm text-accent-blue/60 mt-1">Силвър: {winner.warrior}</p>
             )}
           </div>
         ) : (
