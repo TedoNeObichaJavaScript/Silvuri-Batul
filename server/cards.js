@@ -4,10 +4,10 @@
 const WARRIORS = [
   // ===== COMMON (8) =====
   {
-    id: 'marinimabuzkut', name: 'Марин има Бъзкът', title: 'Фризьорският Майстор',
+    id: 'marinimabuzkut', name: 'Марин с Бъзкът', title: 'Барбершопа',
     image: '/images/cards/marinimabuzkut.png', rarity: 'common',
-    atk: 5, def: 5,
-    ability: { name: 'Фризьорски Удар', description: 'Премахва всички бафове от противника.', type: 'purge' }
+    atk: 6, def: 5,
+    ability: { name: 'Фризьорски Удар', description: 'Премахва всички бафове от противника и нанася +3 бонус щети.', type: 'purge', bonusDmg: 3 }
   },
   {
     id: 'borkosbira', name: 'Борко с Бира', title: 'Пияният Берсеркер',
@@ -22,13 +22,13 @@ const WARRIORS = [
     ability: { name: 'Зад Решетките', description: 'Целта пропуска следващия си ход.', type: 'lock' }
   },
   {
-    id: 'marinchad', name: 'Марин Чад', title: 'Алфа Доминаторът',
+    id: 'marinchad', name: 'Марин Чад', title: 'Силвърската Алфа',
     image: '/images/cards/marinchad.jpg', rarity: 'common',
     atk: 6, def: 5,
     ability: { name: 'Чад Аура', description: 'Намалява ATK на целта с 3 за 1 рунд.', type: 'aura_debuff', debuffValue: 3 }
   },
   {
-    id: 'polkovnikviki', name: 'Полковник Вики', title: 'Нощният Командир',
+    id: 'polkovnikviki', name: 'Полковник Вики', title: 'Тъмната Алфа',
     image: '/images/cards/polkovnikviki.jpg', rarity: 'common',
     atk: 6, def: 6,
     ability: { name: 'Военна Стратегия', description: '+3 ATK и +3 DEF за следващия рунд.', type: 'buff_next', buffAtk: 3, buffDef: 3 }
@@ -36,25 +36,25 @@ const WARRIORS = [
   {
     id: 'borkopotvurjdava', name: 'Борко Потвърждава', title: 'Гарантираният Удар',
     image: '/images/cards/borkopotvurjdava.png', rarity: 'common',
-    atk: 5, def: 6,
-    ability: { name: 'Потвърдено', description: 'Винаги нанася минимум 3 щети, независимо от DEF.', type: 'guaranteed_dmg', minDamage: 3 }
+    atk: 6, def: 6,
+    ability: { name: 'Потвърдено', description: 'Винаги нанася минимум 5 щети, независимо от DEF.', type: 'guaranteed_dmg', minDamage: 5 }
   },
   {
     id: 'vikislusha', name: 'Вики Слуша', title: 'Подслушвачката',
     image: '/images/cards/vikislusha.png', rarity: 'common',
-    atk: 4, def: 7,
-    ability: { name: 'Подслушване', description: 'Краде 1 случайна контра от противника.', type: 'counter_steal' }
+    atk: 5, def: 7,
+    ability: { name: 'Подслушване', description: 'Краде 1 случайна контра от противника и нанася +2 бонус щети.', type: 'counter_steal', bonusDmg: 2 }
   },
   {
-    id: 'pavlinsublaznitelniq', name: 'Павлин Съблазнителния', title: 'Чарът на Магазина',
+    id: 'pavlinsublaznitelniq', name: 'Павлин Съблазнителния', title: 'Чарът на Карнобат',
     image: '/images/cards/pavlinsublaznitelniq.jpg', rarity: 'common',
-    atk: 5, def: 5,
-    ability: { name: 'Чар', description: '35% шанс целта да удари себе си за половин щети.', type: 'charm', chance: 0.35 }
+    atk: 6, def: 5,
+    ability: { name: 'Чар', description: '40% шанс целта да удари себе си за половин щети.', type: 'charm', chance: 0.40 }
   },
 
   // ===== RARE (8) =====
   {
-    id: 'antoniopie', name: 'Антонио Пие', title: 'Вечният Купонджия',
+    id: 'antoniopie', name: 'Антонио Пие', title: 'Шефа на чашата',
     image: '/images/cards/antoniopie.png', rarity: 'rare',
     atk: 5, def: 4,
     ability: { name: 'На Здраве!', description: 'Лекува 5 HP и +2 ATK следващ ход.', type: 'heal_and_buff', healValue: 5, buffValue: 2 }
@@ -72,7 +72,7 @@ const WARRIORS = [
     ability: { name: 'Димна Завеса', description: 'Атакуващият те има 40% промах.', type: 'smoke_screen', missChance: 0.4 }
   },
   {
-    id: 'marinkatadavaL', name: 'Маринката дава L', title: 'Раздавачът на Загуби',
+    id: 'marinkatadavaL', name: 'Маринката дава L', title: 'Този който губи',
     image: '/images/cards/marinkatadavaL.png', rarity: 'rare',
     atk: 6, def: 4,
     ability: { name: 'L за Теб', description: 'Зашеметява целта за 1 рунд.', type: 'stun' }
@@ -84,7 +84,7 @@ const WARRIORS = [
     ability: { name: 'Коледен Подарък', description: '50/50: +8 щети ИЛИ лекува 8 HP.', type: 'random_gift', value: 8 }
   },
   {
-    id: 'borkodjakpota', name: 'Борко Джакпота', title: 'Щастливецът',
+    id: 'borkodjakpota', name: 'Борко Джакпота', title: 'Късметлията',
     image: '/images/cards/borkodjakpota.png', rarity: 'rare',
     atk: 6, def: 5,
     ability: { name: 'Джакпот', description: 'Ролва d6: 1=промах, 2-3=нормално, 4-5=+50%, 6=двойно.', type: 'jackpot' }
@@ -110,13 +110,13 @@ const WARRIORS = [
     ability: { name: 'Огледален Удар', description: 'Връща 50% от получените щети.', type: 'reflect', value: 0.5 }
   },
   {
-    id: 'skultrupara', name: 'Скул Трупара', title: 'Жътварят на Души',
+    id: 'skultrupara', name: 'Скул Трупара', title: 'ог фортнайт императора',
     image: '/images/cards/skultrupara.jpg', rarity: 'epic',
     atk: 9, def: 3,
     ability: { name: 'Жътва', description: 'Краде 30% от нанесените щети като HP. При убийство: +15 HP.', type: 'reap', lifestealPercent: 0.3, healOnKill: 15 }
   },
   {
-    id: 'teodorkapone', name: 'Теодор Капоне', title: 'Мафиотският Бос',
+    id: 'teodorkapone', name: 'Теодор Капоне', title: 'Главата на мафията',
     image: '/images/cards/teodorkapone.jpg', rarity: 'epic',
     atk: 7, def: 5,
     ability: { name: 'Мафиотски Удар', description: 'Щети + 50% на случаен друг играч.', type: 'splash', splashMultiplier: 0.5 }
@@ -142,13 +142,13 @@ const WARRIORS = [
   {
     id: 'iliqnsnaipera', name: 'Илиян Снайпера', title: 'Точният Изстрел',
     image: '/images/cards/iliqnsnaipera.jpg', rarity: 'epic',
-    atk: 9, def: 2,
+    atk: 8, def: 2,
     ability: { name: 'Точен Изстрел', description: 'Игнорира 100% от DEF на целта.', type: 'sniper' }
   },
 
   // ===== LEGENDARY (5) =====
   {
-    id: 'muaythaya', name: 'Муай Тай', title: 'Уличният Боец',
+    id: 'muaythaya', name: 'Муай Тай', title: 'Легендата от Карнобат',
     image: '/images/cards/muaythaya.jpg', rarity: 'legendary',
     atk: 8, def: 5,
     ability: { name: 'Осем Крайника', description: 'Удря 3 пъти по 50% щети. Всеки удар: 30% стън. -2 DEF на целта завинаги.', type: 'eight_limbs', hits: 3, hitMultiplier: 0.5, stunChance: 0.3, defShred: 2 }
@@ -166,16 +166,16 @@ const WARRIORS = [
     ability: { name: '360 No Scope', description: 'Най-висока инициатива = двойни щети.', type: 'speed_kill', multiplier: 2 }
   },
   {
-    id: 'pavlinchimaev', name: 'Павлин Чимаев', title: 'Борецът',
+    id: 'pavlinchimaev', name: 'Павлин Чимаев', title: 'Дагестанския войн',
     image: '/images/cards/pavlinchimaev.jpg', rarity: 'legendary',
-    atk: 7, def: 6,
-    ability: { name: 'Тейкдаун', description: 'Зашеметява целта и нанася +2 бонус щети.', type: 'takedown', bonusDmg: 2 }
+    atk: 8, def: 6,
+    ability: { name: 'Тейкдаун', description: 'Зашеметява целта, +4 бонус щети и -2 DEF завинаги.', type: 'takedown', bonusDmg: 4, defShred: 2 }
   },
   {
     id: 'vulkutotkarnobatstreet', name: 'Вълкът от Карнобат Стрийт', title: 'Уолстрийт Измамникът',
     image: '/images/cards/vulkutotkarnobatstreet.jpg', rarity: 'legendary',
-    atk: 5, def: 6,
-    ability: { name: 'Схемата', description: 'Краде 1 spell от целта и +3 бонус щети.', type: 'scheme', bonusDmg: 3 }
+    atk: 7, def: 6,
+    ability: { name: 'Схемата', description: 'Краде 1 spell от целта и +4 бонус щети.', type: 'scheme', bonusDmg: 4 }
   },
 
   // ===== SECRET (3) — ~5% chance to appear in draft =====
@@ -192,7 +192,7 @@ const WARRIORS = [
     ability: { name: 'Рибен Капан', description: 'Краде случайна spell карта от целта.', type: 'spell_steal' }
   },
   {
-    id: 'mafiaborko', name: 'Мафия Борко', title: 'Кръстникът',
+    id: 'mafiaborko', name: 'Мафия Борко', title: 'Кръстника на Сървъра',
     image: '/images/cards/mafiaborko.jpg', rarity: 'secret',
     atk: 8, def: 5,
     ability: { name: 'Поръчка', description: 'Маркира целта: +8 бонус щети ако я атакуваш отново.', type: 'contract', bonusDmg: 8 }
@@ -200,7 +200,7 @@ const WARRIORS = [
 
   // ===== COSMIC (2) — ~2% chance, 3 effects =====
   {
-    id: 'muaythayaIglavata', name: 'Муай Тай и Главата', title: 'Тагтиймът',
+    id: 'muaythayaIglavata', name: 'Муай Тай и Главата', title: 'Прайм дуото на Созопол',
     image: '/images/cards/muaythayaIglavata.jpg', rarity: 'cosmic',
     atk: 7, def: 7,
     ability: {
@@ -256,19 +256,19 @@ const SPELLS = [
   { id: 'umirajte_vsichki', name: 'Умирайте всички', description: '4 щети на ВСИЧКИ врагове.', type: 'aoe_damage', value: 4, chain: true, iconColor: '#ff8800' },
   { id: 'lqv_desen', name: 'ляв десен', description: 'Атаката удря два пъти.', type: 'double_hit', iconColor: '#ff6622' },
   { id: 'na_muro_vodata', name: 'на мъро водата', description: '3 отрова за 2 рунда.', type: 'poison', value: 3, duration: 2, iconColor: '#44cc66' },
-  { id: 'stop_igra', name: 'стоп игра', description: 'Замразява целта + 1 случаен враг.', type: 'freeze_chain', chain: true, iconColor: '#22ccbb' },
-  { id: 'edno_za_edno', name: 'едно за едно', description: '-5 HP, +10 ATK.', type: 'sacrifice', hpCost: 5, atkBonus: 10, iconColor: '#8844cc' },
-  { id: 'bum', name: 'бум', description: '50% шанс стън на всеки враг.', type: 'mass_stun', chance: 0.5, chain: true, iconColor: '#cc2222' },
-  { id: 'igrata_na_dyavola', name: 'играта на дявола', description: 'Цел под 50% HP: +8 щети.', type: 'execute', threshold: 0.5, bonusDmg: 8, iconColor: '#6677aa' },
+  { id: 'stop_igra', name: 'стоп игра', description: 'Замразява целта за 1 рунд.', type: 'freeze', iconColor: '#22ccbb' },
+  { id: 'edno_za_edno', name: 'едно за едно', description: '-5 HP, +7 ATK.', type: 'sacrifice', hpCost: 5, atkBonus: 7, iconColor: '#8844cc' },
+  { id: 'bum', name: 'бум', description: '35% шанс стън на всеки враг.', type: 'mass_stun', chance: 0.35, chain: true, iconColor: '#cc2222' },
+  { id: 'igrata_na_dyavola', name: 'играта на дявола', description: 'Цел под 50% HP: +6 щети.', type: 'execute', threshold: 0.5, bonusDmg: 6, iconColor: '#6677aa' },
   { id: 'pepel_ot_rozi', name: 'пепел от рози', description: 'Пренасочва щетите към случаен враг.', type: 'redirect', iconColor: '#cc4466' }
 ];
 
 // ===== COUNTER CARDS (6) =====
 const COUNTERS = [
-  { id: 'poemaj', name: 'поемай', description: 'Отразява 75% щети обратно.', type: 'reflect', value: 0.75, iconColor: '#00bcd4' },
-  { id: 'fiuuu', name: 'фиууу', description: '80% шанс за пълен dodge.', type: 'dodge', chance: 0.8, iconColor: '#b0bec5' },
+  { id: 'poemaj', name: 'поемай', description: 'Отразява 60% щети обратно.', type: 'reflect', value: 0.60, iconColor: '#00bcd4' },
+  { id: 'fiuuu', name: 'фиууу', description: '65% шанс за пълен dodge.', type: 'dodge', chance: 0.65, iconColor: '#b0bec5' },
   { id: 'nyama_takiva', name: 'няма такива', description: 'Анулира spell-а на атакуващия.', type: 'spell_negate', iconColor: '#ff3333' },
-  { id: 'pocherpka', name: 'почерпка', description: 'Превръща до 10 щети в HP.', type: 'absorb', maxAbsorb: 10, iconColor: '#4caf50' },
+  { id: 'pocherpka', name: 'почерпка', description: 'Превръща до 7 щети в HP.', type: 'absorb', maxAbsorb: 7, iconColor: '#4caf50' },
   { id: 'vsichko_se_vrushta', name: 'всичко се връща', description: 'Получаваш щети, но връщаш двойно (макс 15).', type: 'vengeance', multiplier: 2, maxReturn: 15, iconColor: '#9c27b0' },
   { id: 'edin_za_vsichki', name: 'един за всички', description: 'При 5+ щети: 5 на всички врагове.', type: 'chain_react', threshold: 5, damage: 5, chain: true, iconColor: '#ff9800' }
 ];
