@@ -29,8 +29,12 @@ export default function App() {
   const [spells, setSpells] = useState([]);
   const [counters, setCounters] = useState([]);
   const [turnResults, setTurnResults] = useState(null);
+  const [lastAction, setLastAction] = useState(null);
   const [winner, setWinner] = useState(null);
   const [roundComplete, setRoundComplete] = useState(false);
+
+  // Counter prompt state
+  const [counterPrompt, setCounterPrompt] = useState(null);
 
   useEffect(() => {
     setPlayerId(socket.id);
@@ -83,12 +87,14 @@ export default function App() {
       if (log && log.length > 0) {
         setBattleLog(prev => [...prev, ...log.map(l => l)]);
       }
-      // Add initiative log
-      const initLog = init.map(i => `${i.name}: SPD(${i.spd})${i.bonus ? `+${i.bonus}` : ''} + d6(${i.roll}) = ${i.total}`).join(' | ');
+      // Initiative log (no SPD, just dice roll)
+      const initLog = init.map(i => `${i.name}: 🎲${i.roll}`).join(' | ');
       setBattleLog(prev => [...prev, { type: 'initiative', message: `Рунд ${r} Инициатива: ${initLog}` }]);
     });
 
-    socket.on('turn_result', ({ results, playerStates: ps, nextTurn, roundComplete: rc, gameOver, winner: w }) => {
+    socket.on('turn_result', ({ action, results, playerStates: ps, nextTurn, roundComplete: rc, gameOver, winner: w }) => {
+      setCounterPrompt(null); // Clear any counter prompt
+      setLastAction(action || null);
       setTurnResults(results);
       setPlayerStates(ps);
       setCurrentTurn(nextTurn);
@@ -106,6 +112,16 @@ export default function App() {
       if (c) setCounters(c);
     });
 
+    // Counter prompt from server
+    socket.on('counter_prompt', (data) => {
+      setCounterPrompt(data);
+    });
+
+    // Waiting for counter (other players see this)
+    socket.on('waiting_for_counter', (data) => {
+      // Could show a subtle indicator, handled by battle log
+    });
+
     socket.on('game_over', ({ winner: w, playerStates: ps }) => {
       setWinner(w);
       setPlayerStates(ps);
@@ -120,14 +136,17 @@ export default function App() {
         setSpells([]);
         setCounters([]);
         setWinner(null);
+        setLastAction(null);
         setRound(0);
         setDraftOptions([]);
+        setCounterPrompt(null);
       }
     });
 
     return () => {
       ['connect','player_joined','player_left','game_started','draft_options','warrior_picked',
-       'cards_dealt','battle_start','round_start','turn_result','private_state','game_over','phase_change']
+       'cards_dealt','battle_start','round_start','turn_result','private_state','game_over',
+       'phase_change','counter_prompt','waiting_for_counter']
         .forEach(e => socket.off(e));
     };
   }, []);
@@ -136,6 +155,13 @@ export default function App() {
     setError(msg);
     setTimeout(() => setError(''), 3000);
   }, []);
+
+  const handleCounterResponse = useCallback((counterUid) => {
+    socket.emit('counter_response', { counterUid }, (res) => {
+      if (res?.error) showError(res.error);
+    });
+    setCounterPrompt(null);
+  }, [showError]);
 
   return (
     <div className={`h-screen relative flex flex-col ${phase === 'battle' ? 'overflow-hidden' : 'overflow-y-auto'}`}>
@@ -187,7 +213,9 @@ export default function App() {
           <Battle socket={socket} playerId={playerId} playerStates={playerStates}
             round={round} initiative={initiative} currentTurn={currentTurn}
             battleLog={battleLog} spells={spells} counters={counters}
-            turnResults={turnResults} roundComplete={roundComplete}
+            turnResults={turnResults} lastAction={lastAction}
+            roundComplete={roundComplete}
+            counterPrompt={counterPrompt} onCounterResponse={handleCounterResponse}
             onError={showError} />
         )}
         {phase === 'gameOver' && (

@@ -20,6 +20,10 @@ class Game {
     this.initiative = [];
     this.battleLog = [];
     this.winner = null;
+
+    // Counter-on-attack flow
+    this.pendingAttack = null;
+    this.counterTimeoutId = null;
   }
 
   addPlayer(socketId, name) {
@@ -31,13 +35,17 @@ class Game {
       hp: this.maxHp,
       spells: [],
       counters: [],
-      activeCounter: null,
-      buffs: { atk: 0, def: 0, spd: 0 },
+      buffs: { atk: 0, def: 0 },
+      permanentBuffs: { atk: 0, def: 0 },
       debuffs: { atk: 0 },
       poison: { damage: 0, rounds: 0 },
+      atkReduction: { multiplier: 1, rounds: 0 },
       stunned: false,
       frozen: false,
       shielded: false,
+      silenced: 0,
+      bans: 0,
+      banned: false,
       eliminated: false
     });
     return { success: true, playerCount: this.players.size };
@@ -68,7 +76,6 @@ class Game {
     this.draftOrder = rolls.map(r => r.id);
     this.draftIndex = 0;
 
-    // Generate options for first drafter
     const options = generateDraftOptions(this.takenWarriors);
 
     return {
@@ -100,10 +107,10 @@ class Game {
     const draftComplete = this.draftIndex >= this.players.size;
 
     if (draftComplete) {
-      // Deal spell and counter cards
+      // Deal 2 spells and 1 counter initially
       for (const [, p] of this.players) {
-        p.spells = dealSpells(3);
-        p.counters = dealCounters(2);
+        p.spells = dealSpells(2);
+        p.counters = dealCounters(1);
       }
       this.state = 'battle';
       this.round = 0;
@@ -126,6 +133,13 @@ class Game {
     this.round++;
     this.battleLog = [];
 
+    // Deal +1 spell and +1 counter each round (stacking)
+    for (const [, p] of this.players) {
+      if (p.eliminated) continue;
+      p.spells.push(...dealSpells(1));
+      p.counters.push(...dealCounters(1));
+    }
+
     // Apply poison at start
     for (const [, p] of this.players) {
       if (p.eliminated) continue;
@@ -138,19 +152,24 @@ class Game {
       }
     }
 
-    // Clear temporary debuffs from last round
+    // Clear temporary debuffs, decrement silence, decay ATK reduction
     for (const [, p] of this.players) {
       p.debuffs = { atk: 0 };
       if (p.frozen) { p.frozen = false; }
+      if (p.silenced > 0) { p.silenced--; }
+      if (p.atkReduction.rounds > 0) {
+        p.atkReduction.rounds--;
+        if (p.atkReduction.rounds <= 0) {
+          p.atkReduction = { multiplier: 1, rounds: 0 };
+        }
+      }
     }
 
-    // Roll initiative
+    // Roll initiative (pure d6, no SPD)
     const alive = this.getAlivePlayers();
     this.initiative = alive.map(p => {
-      const spdBonus = p.buffs.spd || 0;
       const roll = Math.floor(Math.random() * 6) + 1;
-      const total = (p.warrior?.spd || 0) + spdBonus + roll;
-      return { id: p.id, name: p.name, spd: p.warrior?.spd || 0, bonus: spdBonus, roll, total };
+      return { id: p.id, name: p.name, roll, total: roll };
     });
     this.initiative.sort((a, b) => b.total - a.total);
     this.turnOrder = this.initiative.map(i => i.id);
@@ -159,8 +178,22 @@ class Game {
     // Skip stunned/frozen players
     this.skipIncapacitated();
 
-    // Clear SPD buffs after initiative
-    for (const [, p] of this.players) { p.buffs.spd = 0; }
+    // Owner card: Пролетно Разчистване (every 3 rounds)
+    for (const [, p] of this.players) {
+      if (p.eliminated || !p.warrior) continue;
+      if (p.warrior.ability.type === 'owner_admin' && this.round > 1 && this.round % 3 === 0) {
+        const springCleaning = p.warrior.ability.effects.find(e => e.type === 'spring_cleaning');
+        if (springCleaning) {
+          for (const [, target] of this.players) {
+            if (target.id !== p.id && !target.eliminated) {
+              target.silenced = Math.max(target.silenced, springCleaning.silenceDuration);
+            }
+          }
+          p.atkReduction = { multiplier: springCleaning.atkReduction, rounds: springCleaning.silenceDuration };
+          this.battleLog.push({ type: 'ability', playerName: p.name, message: `🔨 Пролетно Разчистване: ${p.name} заглушава ВСИЧКИ за ${springCleaning.silenceDuration} рунда! (50% ATK)` });
+        }
+      }
+    }
 
     // Cosmic burst check
     for (const [, p] of this.players) {
@@ -190,7 +223,6 @@ class Game {
   }
 
   skipIncapacitated() {
-    const alive = this.getAlivePlayers();
     while (this.currentTurnIndex < this.turnOrder.length) {
       const pid = this.turnOrder[this.currentTurnIndex];
       const p = this.players.get(pid);
@@ -203,7 +235,8 @@ class Game {
     }
   }
 
-  submitTurn(socketId, targetId, spellUid, counterUid) {
+  // Phase 1: Attacker submits action (spell effects resolve, then check for counter prompt)
+  submitTurn(socketId, targetId, spellUid) {
     if (this.state !== 'battle') return { error: 'Не сме в битка!' };
     if (this.turnOrder[this.currentTurnIndex] !== socketId) return { error: 'Не е твой ред!' };
 
@@ -216,21 +249,13 @@ class Game {
     const results = [];
     const warrior = attacker.warrior;
     let spell = null;
-    let counter = null;
 
-    // Find and consume spell
-    if (spellUid) {
+    // Find and consume spell (only if not silenced)
+    if (spellUid && attacker.silenced <= 0) {
       const idx = attacker.spells.findIndex(s => s.uid === spellUid);
       if (idx !== -1) { spell = attacker.spells.splice(idx, 1)[0]; }
-    }
-
-    // Set counter (stays active until triggered)
-    if (counterUid) {
-      const idx = attacker.counters.findIndex(c => c.uid === counterUid);
-      if (idx !== -1) {
-        attacker.activeCounter = attacker.counters.splice(idx, 1)[0];
-        results.push({ type: 'counter_set', playerName: attacker.name, message: `🛡️ ${attacker.name} подготвя ${attacker.activeCounter.name}!` });
-      }
+    } else if (spellUid && attacker.silenced > 0) {
+      results.push({ type: 'silence', playerName: attacker.name, message: `🔇 ${attacker.name} е заглушен и не може да използва магии!` });
     }
 
     // Pre-attack spell effects
@@ -238,15 +263,13 @@ class Game {
     let defBonus = attacker.buffs.def;
     let doubleHit = false;
     let redirectTarget = null;
-    let spellNegated = false;
 
     if (spell) {
-      results.push({ type: 'spell', playerName: attacker.name, spellName: spell.name, icon: spell.icon, message: `${spell.icon} ${attacker.name} използва ${spell.name}!` });
+      results.push({ type: 'spell', playerName: attacker.name, spellName: spell.name, icon: spell.icon, iconColor: spell.iconColor, message: `${spell.icon} ${attacker.name} използва ${spell.name}!` });
 
       switch (spell.type) {
         case 'atk_boost': atkBonus += spell.value; break;
         case 'def_boost': defBonus += spell.value; break;
-        case 'spd_boost': break; // Already applied at initiative
         case 'heal':
           attacker.hp = Math.min(this.maxHp, attacker.hp + spell.value);
           results.push({ type: 'heal', playerName: attacker.name, heal: spell.value, message: `💚 ${attacker.name} лекува ${spell.value} HP!` });
@@ -261,23 +284,23 @@ class Game {
           const others = this.getAlivePlayers().filter(p => p.id !== socketId && p.id !== targetId);
           if (others.length > 0) {
             redirectTarget = others[Math.floor(Math.random() * others.length)];
-            results.push({ type: 'redirect', message: `🌀 Порталът пренасочва атаката към ${redirectTarget.name}!` });
+            results.push({ type: 'redirect', message: `🥀 пепел от рози пренасочва атаката към ${redirectTarget.name}!` });
           }
           break;
         case 'aoe_damage':
           for (const [, p] of this.players) {
             if (p.id !== socketId && !p.eliminated) {
-              const aoeDef = p.warrior ? p.warrior.def + (p.buffs.def || 0) : 0;
-              const aoeDmg = Math.max(0, spell.value - aoeDef);
+              const aoeDef = p.warrior ? p.warrior.def + (p.buffs.def || 0) + (p.permanentBuffs.def || 0) : 0;
+              const aoeDmg = Math.max(1, spell.value - aoeDef);
               p.hp -= aoeDmg;
               if (p.hp <= 0) { p.hp = 0; p.eliminated = true; }
             }
           }
-          results.push({ type: 'chain', message: `🔥 Каскаден Огън нанася ${spell.value} щети на ВСИЧКИ врагове!` });
+          results.push({ type: 'chain', message: `☢️ Умирайте всички нанася ${spell.value} щети на ВСИЧКИ врагове!` });
           break;
         case 'poison':
           target.poison = { damage: spell.value, rounds: spell.duration };
-          results.push({ type: 'poison', targetName: target.name, message: `🗡️ ${target.name} е отровен за ${spell.value} щети/${spell.duration} рунда!` });
+          results.push({ type: 'poison', targetName: target.name, message: `🧪 ${target.name} е отровен за ${spell.value} щети/${spell.duration} рунда!` });
           break;
         case 'freeze_chain':
           target.frozen = true;
@@ -287,9 +310,9 @@ class Game {
             const extra = freezeOthers[Math.floor(Math.random() * freezeOthers.length)];
             extra.frozen = true;
             extra.stunned = true;
-            results.push({ type: 'chain', message: `❄️ Ледена Верига замразява ${target.name} и ${extra.name}!` });
+            results.push({ type: 'chain', message: `✋ стоп игра замразява ${target.name} и ${extra.name}!` });
           } else {
-            results.push({ type: 'chain', message: `❄️ Ледена Верига замразява ${target.name}!` });
+            results.push({ type: 'chain', message: `✋ стоп игра замразява ${target.name}!` });
           }
           break;
         case 'mass_stun':
@@ -297,7 +320,7 @@ class Game {
             if (p.id !== socketId && !p.eliminated) {
               if (Math.random() < spell.chance) {
                 p.stunned = true;
-                results.push({ type: 'chain', message: `⛈️ ${p.name} е зашеметен от Мълниена Буря!` });
+                results.push({ type: 'chain', message: `🧨 ${p.name} е зашеметен от бум!` });
               }
             }
           }
@@ -305,39 +328,95 @@ class Game {
         case 'execute':
           if (target.hp / this.maxHp < spell.threshold) {
             atkBonus += spell.bonusDmg;
-            results.push({ type: 'execute', message: `🩸 Кървав Ритуал: +${spell.bonusDmg} щети срещу ранен враг!` });
+            results.push({ type: 'execute', message: `🎴 играта на дявола: +${spell.bonusDmg} щети срещу ранен враг!` });
           }
           break;
       }
     }
 
-    // Determine actual target
+    // Determine actual target (after redirect)
     const actualTarget = redirectTarget || target;
-    const actualTargetPlayer = this.players.get(actualTarget.id) || actualTarget;
+    const actualTargetId = actualTarget.id || actualTarget;
+    const actualTargetPlayer = this.players.get(actualTargetId) || actualTarget;
 
-    // Check target's counter
-    if (actualTargetPlayer.activeCounter && !spellNegated) {
-      // Don't waste spell_negate counter if attacker used no spell
-      if (actualTargetPlayer.activeCounter.type === 'spell_negate' && !spell) {
-        // Keep the counter active — nothing to negate
-      } else {
-        counter = actualTargetPlayer.activeCounter;
-        actualTargetPlayer.activeCounter = null;
+    // Owner card: Timeout ability (silence target + bonus dmg on every attack)
+    if (warrior.ability.type === 'owner_admin') {
+      const timeout = warrior.ability.effects.find(e => e.type === 'timeout');
+      if (timeout) {
+        actualTargetPlayer.silenced = Math.max(actualTargetPlayer.silenced, timeout.silenceDuration);
+        atkBonus += timeout.bonusDmg;
+        results.push({ type: 'ability', message: `⏱️ Timeout: ${actualTargetPlayer.name} е заглушен за ${timeout.silenceDuration} рунд! +${timeout.bonusDmg} DMG!` });
+      }
+    }
+
+    // Store pending attack for counter resolution
+    this.pendingAttack = {
+      attackerId: socketId,
+      targetId: actualTargetPlayer.id,
+      spell,
+      atkBonus,
+      defBonus,
+      doubleHit,
+      preResults: results,
+      warrior
+    };
+
+    // Check if target has counters available
+    if (actualTargetPlayer.counters.length > 0 && !actualTargetPlayer.eliminated) {
+      return {
+        waitingForCounter: true,
+        targetId: actualTargetPlayer.id,
+        attackerName: attacker.name,
+        attackerWarrior: attacker.warrior ? { id: attacker.warrior.id, name: attacker.warrior.name, image: attacker.warrior.image, rarity: attacker.warrior.rarity } : null,
+        spellUsed: spell ? { name: spell.name, icon: spell.icon, iconColor: spell.iconColor, type: spell.type } : null
+      };
+    }
+
+    // No counters available, resolve immediately
+    return this.resolveTurn(null);
+  }
+
+  // Phase 2: Resolve the turn (with or without counter)
+  resolveTurn(counterUid) {
+    if (!this.pendingAttack) return { error: 'Няма чакаща атака!' };
+    const pending = this.pendingAttack;
+    this.pendingAttack = null;
+
+    const attacker = this.players.get(pending.attackerId);
+    const actualTargetPlayer = this.players.get(pending.targetId);
+    const results = [...pending.preResults];
+    let { atkBonus, defBonus, doubleHit, spell, warrior } = pending;
+    let spellNegated = false;
+
+    // Apply counter if provided
+    let counter = null;
+    if (counterUid) {
+      const idx = actualTargetPlayer.counters.findIndex(c => c.uid === counterUid);
+      if (idx !== -1) {
+        counter = actualTargetPlayer.counters.splice(idx, 1)[0];
+        results.push({ type: 'counter_played', playerName: actualTargetPlayer.name, counterName: counter.name, icon: counter.icon, iconColor: counter.iconColor, message: `${counter.icon} ${actualTargetPlayer.name} играе ${counter.name}!` });
       }
     }
 
     // Check if counter negates spell
     if (counter && counter.type === 'spell_negate' && spell) {
       spellNegated = true;
-      atkBonus = attacker.buffs.atk - attacker.debuffs.atk; // Reset to base
+      atkBonus = attacker.buffs.atk - attacker.debuffs.atk;
       doubleHit = false;
-      results.push({ type: 'counter', playerName: actualTargetPlayer.name, message: `🚫 ${actualTargetPlayer.name}: Нулева Зона анулира ${spell.name}!` });
-      counter = null; // Used up
+      results.push({ type: 'counter', playerName: actualTargetPlayer.name, message: `✖️ ${actualTargetPlayer.name}: няма такива анулира ${spell.name}!` });
+      counter = null;
     }
 
     // Calculate damage
-    const effectiveAtk = Math.max(0, warrior.atk + atkBonus);
-    const targetDef = actualTargetPlayer.warrior ? actualTargetPlayer.warrior.def + (actualTargetPlayer.buffs.def || 0) : 0;
+    const reductionMultiplier = attacker.atkReduction?.multiplier || 1;
+    const effectiveAtk = Math.max(0, Math.floor((warrior.atk + atkBonus + attacker.permanentBuffs.atk) * reductionMultiplier));
+    let targetDef = actualTargetPlayer.warrior ? actualTargetPlayer.warrior.def + (actualTargetPlayer.buffs.def || 0) + (actualTargetPlayer.permanentBuffs.def || 0) + defBonus : 0;
+
+    // Armor pierce (Борко Мусашито)
+    if (warrior.ability.type === 'armor_pierce') {
+      targetDef = Math.floor(targetDef * (1 - warrior.ability.piercePercent));
+      results.push({ type: 'ability', message: `⚔️ Самурайски Удар игнорира 50% от DEF!` });
+    }
 
     // Cosmic shield
     let cosmicShield = 0;
@@ -346,14 +425,19 @@ class Game {
       if (shieldEffect) cosmicShield = shieldEffect.value;
     }
 
-    let baseDamage = Math.max(0, effectiveAtk - targetDef - cosmicShield);
+    let baseDamage = Math.max(1, effectiveAtk - targetDef - cosmicShield);
+
+    // Guaranteed damage override (Борко Потвърждава)
+    if (warrior.ability.type === 'guaranteed_dmg') {
+      baseDamage = Math.max(warrior.ability.minDamage, baseDamage);
+    }
 
     // Apply warrior ability (attacker)
     const abilityResults = this.applyWarriorAbility(attacker, actualTargetPlayer, baseDamage, spell);
     baseDamage = abilityResults.damage;
     results.push(...abilityResults.results);
 
-    // Check counter effects
+    // Check counter effects (if not spell_negate which was already handled)
     if (counter && !spellNegated) {
       const counterResults = this.applyCounter(counter, attacker, actualTargetPlayer, baseDamage);
       baseDamage = counterResults.damage;
@@ -368,9 +452,9 @@ class Game {
 
     // Double hit
     if (doubleHit && !spellNegated) {
-      const secondDmg = Math.max(0, effectiveAtk - targetDef - cosmicShield);
+      const secondDmg = Math.max(1, effectiveAtk - targetDef - cosmicShield);
       actualTargetPlayer.hp -= secondDmg;
-      results.push({ type: 'attack', playerName: attacker.name, targetName: actualTargetPlayer.name, damage: secondDmg, message: `⚔️ Двоен Удар! Още ${secondDmg} щети!` });
+      results.push({ type: 'attack', playerName: attacker.name, targetName: actualTargetPlayer.name, damage: secondDmg, message: `🤜 ляв десен! Още ${secondDmg} щети!` });
     }
 
     // Cosmic drain
@@ -391,8 +475,25 @@ class Game {
       results.push({ type: 'ability', message: `🐟 Рибен Капан: ${attacker.name} краде ${stolen.name} от ${actualTargetPlayer.name}!` });
     }
 
+    // Counter steal (Вики Слуша)
+    if (warrior.ability.type === 'counter_steal' && actualTargetPlayer.counters.length > 0) {
+      const stolenIdx = Math.floor(Math.random() * actualTargetPlayer.counters.length);
+      const stolen = actualTargetPlayer.counters.splice(stolenIdx, 1)[0];
+      attacker.counters.push(stolen);
+      results.push({ type: 'ability', message: `👂 Подслушване: ${attacker.name} краде ${stolen.name} от ${actualTargetPlayer.name}!` });
+    }
+
+    // Ram bonus (Теодор Колата)
+    if (warrior.ability.type === 'ram' && !abilityResults.damageHandled) {
+      const ramBonus = Math.floor(actualTargetPlayer.hp * warrior.ability.hpPercent);
+      if (ramBonus > 0) {
+        actualTargetPlayer.hp -= ramBonus;
+        results.push({ type: 'ability', message: `🚗 Газ до Дупка: +${ramBonus} бонус щети!` });
+      }
+    }
+
     // Clear temp buffs for this player
-    attacker.buffs = { atk: 0, def: 0, spd: 0 };
+    attacker.buffs = { atk: 0, def: 0 };
 
     // Check elimination
     if (actualTargetPlayer.hp <= 0) {
@@ -404,6 +505,18 @@ class Game {
       if (warrior.ability.type === 'reap') {
         attacker.hp = Math.min(this.maxHp, attacker.hp + warrior.ability.healOnKill);
         results.push({ type: 'heal', message: `💀 ЖЪТВА! ${attacker.name} лекува ${warrior.ability.healOnKill} HP!` });
+      }
+
+      // Banhammer check (Owner card)
+      if (warrior.ability.type === 'owner_admin') {
+        const banhammer = warrior.ability.effects.find(e => e.type === 'banhammer');
+        if (banhammer) {
+          attacker.permanentBuffs.atk += banhammer.atkPerKill;
+          attacker.permanentBuffs.def += banhammer.defPerKill;
+          attacker.bans++;
+          actualTargetPlayer.banned = true;
+          results.push({ type: 'ban', playerName: actualTargetPlayer.name, message: `🔨 BANHAMMER! ${actualTargetPlayer.name} е БАННАТ! ${attacker.name} +${banhammer.atkPerKill} ATK +${banhammer.defPerKill} DEF!` });
+        }
       }
     }
 
@@ -442,6 +555,16 @@ class Game {
     this.battleLog.push(...results);
 
     return {
+      action: {
+        attackerId: pending.attackerId,
+        attackerName: attacker.name,
+        attackerWarrior: attacker.warrior ? { id: attacker.warrior.id, name: attacker.warrior.name, image: attacker.warrior.image, rarity: attacker.warrior.rarity } : null,
+        targetId: actualTargetPlayer.id,
+        targetName: actualTargetPlayer.name,
+        targetWarrior: actualTargetPlayer.warrior ? { id: actualTargetPlayer.warrior.id, name: actualTargetPlayer.warrior.name, image: actualTargetPlayer.warrior.image, rarity: actualTargetPlayer.warrior.rarity } : null,
+        spell: spell ? { name: spell.name, icon: spell.icon, iconColor: spell.iconColor, type: spell.type } : null,
+        counter: counter ? { name: counter.name, icon: counter.icon, iconColor: counter.iconColor, type: counter.type } : null
+      },
       results,
       roundComplete,
       nextTurn: !roundComplete ? this.turnOrder[this.currentTurnIndex] : null,
@@ -458,8 +581,7 @@ class Game {
 
     switch (ability.type) {
       case 'purge':
-        target.buffs = { atk: 0, def: 0, spd: 0 };
-        target.activeCounter = null;
+        target.buffs = { atk: 0, def: 0 };
         results.push({ type: 'ability', message: `✂️ Фризьорски Удар премахва бафовете на ${target.name}!` });
         break;
 
@@ -576,6 +698,30 @@ class Game {
           results.push({ type: 'ability', message: `🔥 Последен Шанс: +${bonus} ATK!` });
         }
         break;
+
+      case 'jackpot': {
+        const roll = Math.floor(Math.random() * 6) + 1;
+        if (roll === 1) {
+          damage = 0;
+          results.push({ type: 'miss', playerName: attacker.name, message: `🎰 Джакпот ролва ${roll} — ПРОМАХ!` });
+        } else if (roll <= 3) {
+          results.push({ type: 'ability', message: `🎰 Джакпот ролва ${roll} — нормален удар.` });
+        } else if (roll <= 5) {
+          damage = Math.floor(damage * 1.5);
+          results.push({ type: 'ability', message: `🎰 Джакпот ролва ${roll} — +50% щети!` });
+        } else {
+          damage = damage * 2;
+          results.push({ type: 'ability', message: `🎰 Джакпот ролва 6 — ДВОЙНИ ЩЕТИ!` });
+        }
+        target.hp -= damage;
+        if (damage > 0) {
+          results.push({ type: 'attack', playerName: attacker.name, targetName: target.name, damage, message: `⚔️ ${attacker.warrior.name} нанася ${damage} щети!` });
+        }
+        damageHandled = true;
+        break;
+      }
+
+      // guaranteed_dmg, armor_pierce, counter_steal, ram, owner_admin are handled elsewhere
     }
 
     return { damage, results, damageHandled };
@@ -588,15 +734,15 @@ class Game {
       case 'reflect':
         const reflectDmg = Math.floor(damage * counter.value);
         attacker.hp -= reflectDmg;
-        results.push({ type: 'counter', playerName: target.name, message: `🪞 Огледална Стена! ${reflectDmg} щети обратно на ${attacker.name}!` });
+        results.push({ type: 'counter', playerName: target.name, message: `🪃 поемай! ${reflectDmg} щети обратно на ${attacker.name}!` });
         break;
 
       case 'dodge':
         if (Math.random() < counter.chance) {
           damage = 0;
-          results.push({ type: 'counter', playerName: target.name, message: `💨 Фазово Изместване! ${target.name} избягва атаката!` });
+          results.push({ type: 'counter', playerName: target.name, message: `🌪️ фиууу! ${target.name} избягва атаката!` });
         } else {
-          results.push({ type: 'counter', playerName: target.name, message: `💨 Фазово Изместване... НЕУСПЕШНО!` });
+          results.push({ type: 'counter', playerName: target.name, message: `🌪️ фиууу... НЕУСПЕШНО!` });
         }
         break;
 
@@ -604,13 +750,13 @@ class Game {
         const absorbed = Math.min(damage, counter.maxAbsorb);
         damage -= absorbed;
         target.hp = Math.min(this.maxHp, target.hp + absorbed);
-        results.push({ type: 'counter', playerName: target.name, message: `💚 Абсорбция! ${target.name} превръща ${absorbed} щети в HP!` });
+        results.push({ type: 'counter', playerName: target.name, message: `🍺 почерпка! ${target.name} превръща ${absorbed} щети в HP!` });
         break;
 
       case 'vengeance':
         const vengDmg = damage * counter.multiplier;
         attacker.hp -= vengDmg;
-        results.push({ type: 'counter', playerName: target.name, message: `⚡ Мъстителен Удар! ${attacker.name} получава ${vengDmg} обратно!` });
+        results.push({ type: 'counter', playerName: target.name, message: `🔄 всичко се връща! ${attacker.name} получава ${vengDmg} обратно!` });
         break;
 
       case 'chain_react':
@@ -621,7 +767,7 @@ class Game {
               if (p.hp <= 0) { p.hp = 0; p.eliminated = true; }
             }
           }
-          results.push({ type: 'chain', message: `💥 Верижна Реакция! ${counter.damage} щети на ВСИЧКИ!` });
+          results.push({ type: 'chain', message: `⚡ един за всички! ${counter.damage} щети на ВСИЧКИ!` });
         }
         break;
     }
@@ -640,16 +786,24 @@ class Game {
     for (const [id, p] of this.players) {
       states[id] = {
         id: p.id, name: p.name, hp: p.hp, maxHp: this.maxHp,
-        warrior: p.warrior ? { id: p.warrior.id, name: p.warrior.name, title: p.warrior.title, image: p.warrior.image, rarity: p.warrior.rarity, atk: p.warrior.atk, def: p.warrior.def, spd: p.warrior.spd, ability: p.warrior.ability } : null,
+        warrior: p.warrior ? {
+          id: p.warrior.id, name: p.warrior.name, title: p.warrior.title,
+          image: p.warrior.image, rarity: p.warrior.rarity,
+          atk: p.warrior.atk, def: p.warrior.def,
+          ability: p.warrior.ability
+        } : null,
         spellCount: p.spells.length,
         counterCount: p.counters.length,
-        hasCounter: !!p.activeCounter,
         eliminated: p.eliminated,
         stunned: p.stunned,
         frozen: p.frozen,
         poisoned: p.poison.rounds > 0,
         shielded: p.shielded,
-        buffs: { ...p.buffs }
+        silenced: p.silenced > 0,
+        banned: p.banned,
+        bans: p.bans,
+        buffs: { ...p.buffs },
+        permanentBuffs: { ...p.permanentBuffs }
       };
     }
     return states;
@@ -660,8 +814,7 @@ class Game {
     if (!p) return null;
     return {
       spells: p.spells,
-      counters: p.counters,
-      activeCounter: p.activeCounter
+      counters: p.counters
     };
   }
 

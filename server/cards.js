@@ -1,108 +1,144 @@
 // Silvuri Batul - Card Definitions
-// Warriors (19), Spell Cards (12), Counter Cards (6)
+// Warriors (25), Spell Cards (11), Counter Cards (6)
 
 const WARRIORS = [
-  // ===== COMMON (5) =====
+  // ===== COMMON (7) =====
   {
     id: 'marinimabuzkut', name: 'Марин има Бъзкът', title: 'Фризьорският Майстор',
     image: '/images/cards/marinimabuzkut.png', rarity: 'common',
-    atk: 5, def: 5, spd: 5,
+    atk: 5, def: 5,
     ability: { name: 'Фризьорски Удар', description: 'Премахва всички бафове от противника.', type: 'purge' }
   },
   {
     id: 'borkosbira', name: 'Борко с Бира', title: 'Пияният Берсеркер',
     image: '/images/cards/borkosbira.jpg', rarity: 'common',
-    atk: 8, def: 2, spd: 4,
+    atk: 8, def: 2,
     ability: { name: 'Пиян Размах', description: '70% двойни щети, 30% промах.', type: 'drunk_swing', hitChance: 0.7, multiplier: 2 }
   },
   {
     id: 'naborkozatvora', name: 'На Борко Затвора', title: 'Вратарят на Затвора',
     image: '/images/cards/naborkozatvora.jpg', rarity: 'common',
-    atk: 4, def: 8, spd: 3,
+    atk: 4, def: 8,
     ability: { name: 'Зад Решетките', description: 'Целта пропуска следващия си ход.', type: 'lock' }
   },
   {
     id: 'marinchad', name: 'Марин Чад', title: 'Алфа Доминаторът',
     image: '/images/cards/marinchad.jpg', rarity: 'common',
-    atk: 6, def: 5, spd: 5,
+    atk: 6, def: 5,
     ability: { name: 'Чад Аура', description: 'Намалява ATK на целта с 3 за 1 рунд.', type: 'aura_debuff', debuffValue: 3 }
   },
   {
     id: 'polkovnikviki', name: 'Полковник Вики', title: 'Нощният Командир',
     image: '/images/cards/polkovnikviki.jpg', rarity: 'common',
-    atk: 6, def: 6, spd: 4,
+    atk: 6, def: 6,
     ability: { name: 'Военна Стратегия', description: '+3 ATK и +3 DEF за следващия рунд.', type: 'buff_next', buffAtk: 3, buffDef: 3 }
   },
+  {
+    id: 'borkopotvurjdava', name: 'Борко Потвърждава', title: 'Гарантираният Удар',
+    image: '/images/cards/borkopotvurjdava.png', rarity: 'common',
+    atk: 5, def: 6,
+    ability: { name: 'Потвърдено', description: 'Винаги нанася минимум 3 щети, независимо от DEF.', type: 'guaranteed_dmg', minDamage: 3 }
+  },
+  {
+    id: 'vikislusha', name: 'Вики Слуша', title: 'Подслушвачката',
+    image: '/images/cards/vikislusha.png', rarity: 'common',
+    atk: 4, def: 7,
+    ability: { name: 'Подслушване', description: 'Краде 1 случайна контра от противника.', type: 'counter_steal' }
+  },
 
-  // ===== RARE (5) =====
+  // ===== RARE (7) =====
   {
     id: 'antoniopie', name: 'Антонио Пие', title: 'Вечният Купонджия',
     image: '/images/cards/antoniopie.png', rarity: 'rare',
-    atk: 5, def: 4, spd: 7,
+    atk: 5, def: 4,
     ability: { name: 'На Здраве!', description: 'Лекува 5 HP и +2 ATK следващ ход.', type: 'heal_and_buff', healValue: 5, buffValue: 2 }
   },
   {
     id: 'borkoskotka', name: 'Борко с Котка', title: 'Котешкият Господар',
     image: '/images/cards/borkoskotka.png', rarity: 'rare',
-    atk: 4, def: 7, spd: 6,
+    atk: 4, def: 7,
     ability: { name: 'Котешки Щит', description: 'Блокира напълно следващата атака.', type: 'full_block' }
   },
   {
     id: 'sashkoscigari', name: 'Сашко с Цигари', title: 'Димната Завеса',
     image: '/images/cards/sashkoscigari.png', rarity: 'rare',
-    atk: 6, def: 3, spd: 8,
+    atk: 6, def: 3,
     ability: { name: 'Димна Завеса', description: 'Атакуващият те има 40% промах.', type: 'smoke_screen', missChance: 0.4 }
   },
   {
     id: 'marinkatadavaL', name: 'Маринката дава L', title: 'Раздавачът на Загуби',
     image: '/images/cards/marinkatadavaL.png', rarity: 'rare',
-    atk: 6, def: 4, spd: 7,
+    atk: 6, def: 4,
     ability: { name: 'L за Теб', description: 'Зашеметява целта за 1 рунд.', type: 'stun' }
   },
   {
     id: 'borkodqdokoleda', name: 'Борко Дядо Коледа', title: 'Празничният Хаос',
     image: '/images/cards/borkodqdokoleda.png', rarity: 'rare',
-    atk: 6, def: 5, spd: 5,
+    atk: 6, def: 5,
     ability: { name: 'Коледен Подарък', description: '50/50: +8 щети ИЛИ лекува 8 HP.', type: 'random_gift', value: 8 }
   },
+  {
+    id: 'borkodjakpota', name: 'Борко Джакпота', title: 'Щастливецът',
+    image: '/images/cards/borkodjakpota.png', rarity: 'rare',
+    atk: 6, def: 5,
+    ability: { name: 'Джакпот', description: 'Ролва d6: 1=промах, 2-3=нормално, 4-5=+50%, 6=двойно.', type: 'jackpot' }
+  },
+  {
+    id: 'teodorkolata', name: 'Теодор Колата', title: 'Шофьорът на Съдбата',
+    image: '/images/cards/teodorkolata.png', rarity: 'rare',
+    atk: 7, def: 4,
+    ability: { name: 'Газ до Дупка', description: 'Бонус щети = 20% от текущия HP на целта.', type: 'ram', hpPercent: 0.2 }
+  },
 
-  // ===== EPIC (4) =====
+  // ===== EPIC (6) =====
   {
     id: 'antoniopashata', name: 'Антонио Пашата', title: 'Огледалният Воин',
     image: '/images/cards/antoniopashata.png', rarity: 'epic',
-    atk: 7, def: 5, spd: 6,
+    atk: 7, def: 5,
     ability: { name: 'Огледален Удар', description: 'Връща 50% от получените щети.', type: 'reflect', value: 0.5 }
   },
   {
     id: 'skultrupara', name: 'Скул Трупара', title: 'Жътварят на Души',
     image: '/images/cards/skultrupara.jpg', rarity: 'epic',
-    atk: 9, def: 3, spd: 6,
+    atk: 9, def: 3,
     ability: { name: 'Жътва', description: 'При елиминация на целта, лекува 10 HP.', type: 'reap', healOnKill: 10 }
   },
   {
     id: 'teodorkapone', name: 'Теодор Капоне', title: 'Мафиотският Бос',
     image: '/images/cards/teodorkapone.jpg', rarity: 'epic',
-    atk: 7, def: 5, spd: 6,
+    atk: 7, def: 5,
     ability: { name: 'Мафиотски Удар', description: 'Щети + 50% на случаен друг играч.', type: 'splash', splashMultiplier: 0.5 }
   },
   {
     id: 'pavlinzalaga', name: 'Павлин Залага', title: 'Високият Залог',
     image: '/images/cards/pavlinzalaga.jpg', rarity: 'epic',
-    atk: 6, def: 5, spd: 6,
+    atk: 6, def: 5,
     ability: { name: 'Голям Залог', description: '50/50: двойни щети ИЛИ лекува противника.', type: 'gamble', chance: 0.5 }
+  },
+  {
+    id: 'borkomusashito', name: 'Борко Мусашито', title: 'Пътят на Меча',
+    image: '/images/cards/borkomusashito.png', rarity: 'epic',
+    atk: 8, def: 4,
+    ability: { name: 'Самурайски Удар', description: 'Игнорира 50% от DEF на противника.', type: 'armor_pierce', piercePercent: 0.5 }
+  },
+  {
+    id: 'pavlinumira', name: 'Павлин Умира', title: 'Последният Дъх',
+    image: '/images/cards/pavlinumira.png', rarity: 'epic',
+    atk: 7, def: 4,
+    ability: { name: 'Предсмъртен Удар', description: 'При под 25% HP: удвоява всички щети.', type: 'desperation', thresholds: [{ percent: 0.5, bonus: 4 }, { percent: 0.25, bonus: 10 }] }
   },
 
   // ===== LEGENDARY (2) =====
   {
     id: 'bezkuchki', name: 'Без Кучки', title: 'Тихият Хакер',
     image: '/images/cards/bezkuchki.png', rarity: 'legendary',
-    atk: 6, def: 7, spd: 5,
+    atk: 6, def: 7,
     ability: { name: 'Хакерска Атака', description: 'Копира способността на противника.', type: 'copy_ability' }
   },
   {
     id: 'calofdutigrost', name: 'Call of Duty Грост', title: 'Призракът Снайперист',
     image: '/images/cards/calofdutigrost.png', rarity: 'legendary',
-    atk: 9, def: 2, spd: 9,
+    atk: 9, def: 2,
     ability: { name: '360 No Scope', description: 'Най-висока инициатива = тройни щети.', type: 'speed_kill', multiplier: 3 }
   },
 
@@ -110,13 +146,13 @@ const WARRIORS = [
   {
     id: 'marinskvidgeima', name: 'Марин Сквид Гейм', title: 'Играч 067',
     image: '/images/cards/marinskvidgeima.jpg', rarity: 'secret',
-    atk: 8, def: 5, spd: 7,
+    atk: 8, def: 5,
     ability: { name: 'Последен Шанс', description: 'Под 50% HP: +6 ATK. Под 25%: +12 ATK.', type: 'desperation', thresholds: [{ percent: 0.5, bonus: 6 }, { percent: 0.25, bonus: 12 }] }
   },
   {
     id: 'antoniosriba', name: 'Антонио с Риба', title: 'Рибарят на Съдбата',
     image: '/images/cards/antoniosriba.png', rarity: 'secret',
-    atk: 7, def: 6, spd: 7,
+    atk: 7, def: 6,
     ability: { name: 'Рибен Капан', description: 'Краде случайна spell карта от целта.', type: 'spell_steal' }
   },
 
@@ -124,7 +160,7 @@ const WARRIORS = [
   {
     id: 'sashkoebit', name: 'Сашко Елементалът', title: 'Космическият Страж',
     image: '/images/cards/sashkoebit.png', rarity: 'cosmic',
-    atk: 7, def: 6, spd: 6,
+    atk: 7, def: 6,
     ability: {
       name: 'Космическа Троица',
       description: 'Краде 3 HP | Щит -3 щети | Всеки 2 рунда: 3 AoE.',
@@ -135,33 +171,49 @@ const WARRIORS = [
         { type: 'burst', value: 3, interval: 2 }
       ]
     }
+  },
+
+  // ===== OWNER (1) — ~1% chance, 3 abilities + passive =====
+  {
+    id: 'teodorglavata', name: 'Теодор Главата', title: 'Собственикът на Сървъра',
+    image: '/images/cards/teodorglavata.jpg', rarity: 'owner',
+    atk: 8, def: 7,
+    ability: {
+      name: 'Администратор',
+      description: 'Passive: Banhammer +2/+2 per kill | Timeout: Silence +3 DMG | Пролетно Разчистване',
+      type: 'owner_admin',
+      effects: [
+        { type: 'banhammer', atkPerKill: 2, defPerKill: 2 },
+        { type: 'timeout', silenceDuration: 1, bonusDmg: 3 },
+        { type: 'spring_cleaning', silenceDuration: 2, atkReduction: 0.5, interval: 3 }
+      ]
+    }
   }
 ];
 
-// ===== SPELL CARDS (12) =====
+// ===== SPELL CARDS (11) =====
 const SPELLS = [
-  { id: 'phantom_strike', name: 'Фантомен Удар', description: '+6 ATK за тази атака.', type: 'atk_boost', value: 6, icon: '👻' },
-  { id: 'steel_will', name: 'Стоманена Воля', description: '+6 DEF за този рунд.', type: 'def_boost', value: 6, icon: '🛡️' },
-  { id: 'shadow_leap', name: 'Сенчест Скок', description: '+6 SPD за инициативата.', type: 'spd_boost', value: 6, icon: '🌑' },
-  { id: 'soul_steal', name: 'Кражба на Душа', description: 'Лекува 8 HP.', type: 'heal', value: 8, icon: '💜' },
-  { id: 'cascade_fire', name: 'Каскаден Огън', description: '4 щети на ВСИЧКИ врагове.', type: 'aoe_damage', value: 4, chain: true, icon: '🔥' },
-  { id: 'twin_strike', name: 'Двоен Удар', description: 'Атаката удря два пъти.', type: 'double_hit', icon: '⚔️' },
-  { id: 'venom_blade', name: 'Отровен Нож', description: '3 отрова за 2 рунда.', type: 'poison', value: 3, duration: 2, icon: '🗡️' },
-  { id: 'frost_chain', name: 'Ледена Верига', description: 'Замразява целта + 1 случаен враг.', type: 'freeze_chain', chain: true, icon: '❄️' },
-  { id: 'dark_pact', name: 'Тъмен Пакт', description: '-5 HP, +10 ATK.', type: 'sacrifice', hpCost: 5, atkBonus: 10, icon: '🩸' },
-  { id: 'thunder_storm', name: 'Мълниена Буря', description: '50% шанс стън на всеки враг.', type: 'mass_stun', chance: 0.5, chain: true, icon: '⛈️' },
-  { id: 'blood_ritual', name: 'Кървав Ритуал', description: 'Цел под 50% HP: +8 щети.', type: 'execute', threshold: 0.5, bonusDmg: 8, icon: '🩸' },
-  { id: 'portal', name: 'Портал', description: 'Пренасочва щетите към случаен враг.', type: 'redirect', icon: '🌀' }
+  { id: 'mahlenska_baltia', name: 'Махленска Балтия', description: '+6 ATK за тази атака.', type: 'atk_boost', value: 6, icon: '🪓', iconColor: '#ff4444' },
+  { id: 'akcia_respekt', name: 'Акция респект', description: '+6 DEF за този рунд.', type: 'def_boost', value: 6, icon: '🫡', iconColor: '#4488ff' },
+  { id: 'kradeca_na_dushi', name: 'Крадеца на души', description: 'Лекува 8 HP.', type: 'heal', value: 8, icon: '👁️‍🗨️', iconColor: '#aa44ff' },
+  { id: 'umirajte_vsichki', name: 'Умирайте всички', description: '4 щети на ВСИЧКИ врагове.', type: 'aoe_damage', value: 4, chain: true, icon: '☢️', iconColor: '#ff8800' },
+  { id: 'lqv_desen', name: 'ляв десен', description: 'Атаката удря два пъти.', type: 'double_hit', icon: '🤜', iconColor: '#ff6622' },
+  { id: 'na_muro_vodata', name: 'на мъро водата', description: '3 отрова за 2 рунда.', type: 'poison', value: 3, duration: 2, icon: '🧪', iconColor: '#44cc66' },
+  { id: 'stop_igra', name: 'стоп игра', description: 'Замразява целта + 1 случаен враг.', type: 'freeze_chain', chain: true, icon: '✋', iconColor: '#22ccbb' },
+  { id: 'edno_za_edno', name: 'едно за едно', description: '-5 HP, +10 ATK.', type: 'sacrifice', hpCost: 5, atkBonus: 10, icon: '⚖️', iconColor: '#8844cc' },
+  { id: 'bum', name: 'бум', description: '50% шанс стън на всеки враг.', type: 'mass_stun', chance: 0.5, chain: true, icon: '🧨', iconColor: '#cc2222' },
+  { id: 'igrata_na_dyavola', name: 'играта на дявола', description: 'Цел под 50% HP: +8 щети.', type: 'execute', threshold: 0.5, bonusDmg: 8, icon: '🎴', iconColor: '#6677aa' },
+  { id: 'pepel_ot_rozi', name: 'пепел от рози', description: 'Пренасочва щетите към случаен враг.', type: 'redirect', icon: '🥀', iconColor: '#cc4466' }
 ];
 
 // ===== COUNTER CARDS (6) =====
 const COUNTERS = [
-  { id: 'mirror_wall', name: 'Огледална Стена', description: 'Отразява 75% щети обратно.', type: 'reflect', value: 0.75, icon: '🪞' },
-  { id: 'phase_shift', name: 'Фазово Изместване', description: '80% шанс за пълен dodge.', type: 'dodge', chance: 0.8, icon: '💨' },
-  { id: 'null_zone', name: 'Нулева Зона', description: 'Анулира spell-а на атакуващия.', type: 'spell_negate', icon: '🚫' },
-  { id: 'absorption', name: 'Абсорбция', description: 'Превръща до 10 щети в HP.', type: 'absorb', maxAbsorb: 10, icon: '💚' },
-  { id: 'vengeful_strike', name: 'Мъстителен Удар', description: 'Получаваш щети, но връщаш двойно.', type: 'vengeance', multiplier: 2, icon: '⚡' },
-  { id: 'chain_reaction', name: 'Верижна Реакция', description: 'При 5+ щети: 5 на всички врагове.', type: 'chain_react', threshold: 5, damage: 5, chain: true, icon: '💥' }
+  { id: 'poemaj', name: 'поемай', description: 'Отразява 75% щети обратно.', type: 'reflect', value: 0.75, icon: '🪃', iconColor: '#00bcd4' },
+  { id: 'fiuuu', name: 'фиууу', description: '80% шанс за пълен dodge.', type: 'dodge', chance: 0.8, icon: '🌪️', iconColor: '#b0bec5' },
+  { id: 'nyama_takiva', name: 'няма такива', description: 'Анулира spell-а на атакуващия.', type: 'spell_negate', icon: '✖️', iconColor: '#ff3333' },
+  { id: 'pocherpka', name: 'почерпка', description: 'Превръща до 10 щети в HP.', type: 'absorb', maxAbsorb: 10, icon: '🍺', iconColor: '#4caf50' },
+  { id: 'vsichko_se_vrushta', name: 'всичко се връща', description: 'Получаваш щети, но връщаш двойно.', type: 'vengeance', multiplier: 2, icon: '🔄', iconColor: '#9c27b0' },
+  { id: 'edin_za_vsichki', name: 'един за всички', description: 'При 5+ щети: 5 на всички врагове.', type: 'chain_react', threshold: 5, damage: 5, chain: true, icon: '⚡', iconColor: '#ff9800' }
 ];
 
 const RARITY_COLORS = {
@@ -170,7 +222,8 @@ const RARITY_COLORS = {
   epic: '#8b5cf6',
   legendary: '#f59e0b',
   secret: '#dc2626',
-  cosmic: '#ff00ff'
+  cosmic: '#ff00ff',
+  owner: '#ff0000'
 };
 
 const RARITY_NAMES = {
@@ -179,7 +232,8 @@ const RARITY_NAMES = {
   epic: 'Епична',
   legendary: 'Легендарна',
   secret: 'Тайна',
-  cosmic: 'Космическа'
+  cosmic: 'Космическа',
+  owner: 'Собственик'
 };
 
 // Rarity weights for draft appearance
@@ -189,7 +243,8 @@ const RARITY_WEIGHTS = {
   epic: 20,
   legendary: 10,
   secret: 5,
-  cosmic: 2
+  cosmic: 2,
+  owner: 1
 };
 
 function getWeightedRarity() {
@@ -227,7 +282,7 @@ function generateDraftOptions(takenIds, count = 5) {
   return options;
 }
 
-function dealSpells(count = 3) {
+function dealSpells(count = 2) {
   const hand = [];
   for (let i = 0; i < count; i++) {
     hand.push({ ...SPELLS[Math.floor(Math.random() * SPELLS.length)], uid: `spell_${Date.now()}_${i}_${Math.random().toString(36).slice(2, 6)}` });
@@ -235,7 +290,7 @@ function dealSpells(count = 3) {
   return hand;
 }
 
-function dealCounters(count = 2) {
+function dealCounters(count = 1) {
   const hand = [];
   for (let i = 0; i < count; i++) {
     hand.push({ ...COUNTERS[Math.floor(Math.random() * COUNTERS.length)], uid: `counter_${Date.now()}_${i}_${Math.random().toString(36).slice(2, 6)}` });

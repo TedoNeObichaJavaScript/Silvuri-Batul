@@ -16,6 +16,7 @@ export default {
           legendary: '#f59e0b',
           secret: '#dc2626',
           cosmic: '#ff00ff',
+          owner: '#ff0000',
         },
         dark: {
           900: '#0b0e14',
@@ -45,6 +46,21 @@ export default {
         'cosmic-glow': 'cosmic-glow 2s ease-in-out infinite',
         'pulse-ring': 'pulse-ring 1.5s ease-out infinite',
         'turn-glow': 'turn-glow 1s ease-in-out infinite',
+        'battle-shake': 'battle-shake 0.4s ease',
+        'slam-left': 'slam-left 0.5s cubic-bezier(0.22, 1, 0.36, 1)',
+        'slam-right': 'slam-right 0.5s cubic-bezier(0.22, 1, 0.36, 1)',
+        'damage-pop': 'damage-pop 0.8s ease-out forwards',
+        'heal-pop': 'heal-pop 0.8s ease-out forwards',
+        'spell-burst': 'spell-burst 0.6s ease-out',
+        'fade-out': 'fade-out 0.5s ease-out forwards',
+        'target-pulse': 'target-pulse 1s ease-in-out infinite',
+        'impact-flash': 'impact-flash 0.3s ease-out',
+        'elimination-skull': 'elimination-skull 1s ease-out forwards',
+        'owner-glow': 'owner-glow 3s ease-in-out infinite',
+        'owner-border-shift': 'owner-border-shift 3s linear infinite',
+        'silence-pulse': 'silence-pulse 1.5s ease-in-out infinite',
+        'freeze-shimmer': 'freeze-shimmer 2s ease-in-out infinite',
+        'poison-drip': 'poison-drip 2s ease-in-out infinite',
       },
       keyframes: {
         'glow-pulse': {
@@ -91,6 +107,89 @@ export default {
         'turn-glow': {
           '0%, 100%': { boxShadow: '0 0 10px rgba(0,180,255,0.4)' },
           '50%': { boxShadow: '0 0 25px rgba(0,180,255,0.8)' },
+        },
+        'battle-shake': {
+          '0%, 100%': { transform: 'translate(0, 0)' },
+          '10%': { transform: 'translate(-4px, -2px)' },
+          '20%': { transform: 'translate(4px, 2px)' },
+          '30%': { transform: 'translate(-2px, 4px)' },
+          '40%': { transform: 'translate(2px, -4px)' },
+          '50%': { transform: 'translate(-4px, 0)' },
+          '60%': { transform: 'translate(4px, 2px)' },
+          '70%': { transform: 'translate(-2px, -2px)' },
+          '80%': { transform: 'translate(2px, 4px)' },
+          '90%': { transform: 'translate(-4px, -2px)' },
+        },
+        'slam-left': {
+          '0%': { transform: 'translateX(-100px) scale(0.3) rotate(-20deg)', opacity: '0' },
+          '70%': { transform: 'translateX(5px) scale(1.05) rotate(2deg)', opacity: '1' },
+          '100%': { transform: 'translateX(0) scale(1) rotate(0)', opacity: '1' },
+        },
+        'slam-right': {
+          '0%': { transform: 'translateX(100px) scale(0.3) rotate(20deg)', opacity: '0' },
+          '70%': { transform: 'translateX(-5px) scale(1.05) rotate(-2deg)', opacity: '1' },
+          '100%': { transform: 'translateX(0) scale(1) rotate(0)', opacity: '1' },
+        },
+        'damage-pop': {
+          '0%': { transform: 'scale(0.5) translateY(0)', opacity: '0' },
+          '30%': { transform: 'scale(1.4) translateY(-10px)', opacity: '1' },
+          '100%': { transform: 'scale(1) translateY(-40px)', opacity: '0' },
+        },
+        'heal-pop': {
+          '0%': { transform: 'scale(0.5) translateY(0)', opacity: '0' },
+          '30%': { transform: 'scale(1.4) translateY(-10px)', opacity: '1' },
+          '100%': { transform: 'scale(1) translateY(-40px)', opacity: '0' },
+        },
+        'spell-burst': {
+          '0%': { transform: 'scale(0) rotate(-180deg)', opacity: '0' },
+          '60%': { transform: 'scale(1.3) rotate(10deg)', opacity: '1' },
+          '100%': { transform: 'scale(1) rotate(0)', opacity: '1' },
+        },
+        'fade-out': {
+          '0%': { opacity: '1', transform: 'scale(1)' },
+          '100%': { opacity: '0', transform: 'scale(0.9)' },
+        },
+        'fade-in': {
+          '0%': { opacity: '0' },
+          '100%': { opacity: '1' },
+        },
+        'target-pulse': {
+          '0%, 100%': { boxShadow: '0 0 0 0 rgba(239, 68, 68, 0.5)' },
+          '50%': { boxShadow: '0 0 0 10px rgba(239, 68, 68, 0)' },
+        },
+        'impact-flash': {
+          '0%': { opacity: '0', transform: 'scale(0.5)' },
+          '50%': { opacity: '1', transform: 'scale(1.2)' },
+          '100%': { opacity: '0', transform: 'scale(1.5)' },
+        },
+        'elimination-skull': {
+          '0%': { transform: 'scale(0) rotate(-180deg)', opacity: '0' },
+          '50%': { transform: 'scale(1.5) rotate(0)', opacity: '1' },
+          '100%': { transform: 'scale(1) rotate(0)', opacity: '1' },
+        },
+        // Owner rarity animations
+        'owner-glow': {
+          '0%, 100%': { boxShadow: '0 0 15px rgba(255, 0, 0, 0.4), 0 0 30px rgba(255, 119, 0, 0.2), 0 0 45px rgba(138, 43, 226, 0.1)' },
+          '33%': { boxShadow: '0 0 15px rgba(0, 255, 0, 0.4), 0 0 30px rgba(0, 119, 255, 0.2), 0 0 45px rgba(255, 0, 136, 0.1)' },
+          '66%': { boxShadow: '0 0 15px rgba(0, 119, 255, 0.4), 0 0 30px rgba(138, 0, 255, 0.2), 0 0 45px rgba(255, 0, 0, 0.1)' },
+        },
+        'owner-border-shift': {
+          '0%': { backgroundPosition: '0% 50%' },
+          '50%': { backgroundPosition: '100% 50%' },
+          '100%': { backgroundPosition: '0% 50%' },
+        },
+        // Status effect animations
+        'silence-pulse': {
+          '0%, 100%': { opacity: '1', filter: 'brightness(1)' },
+          '50%': { opacity: '0.5', filter: 'brightness(0.6)' },
+        },
+        'freeze-shimmer': {
+          '0%, 100%': { filter: 'hue-rotate(0deg) brightness(1)' },
+          '50%': { filter: 'hue-rotate(20deg) brightness(1.3)' },
+        },
+        'poison-drip': {
+          '0%, 100%': { filter: 'brightness(1)' },
+          '50%': { filter: 'brightness(0.7) saturate(1.5)' },
         },
       }
     },
