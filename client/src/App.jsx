@@ -19,6 +19,7 @@ export default function App() {
   const [draftOrder, setDraftOrder] = useState([]);
   const [currentPicker, setCurrentPicker] = useState(null);
   const [draftOptions, setDraftOptions] = useState([]);
+  const [lastDraftPick, setLastDraftPick] = useState(null);
 
   // Battle state
   const [playerStates, setPlayerStates] = useState({});
@@ -38,7 +39,28 @@ export default function App() {
 
   useEffect(() => {
     setPlayerId(socket.id);
-    socket.on('connect', () => setPlayerId(socket.id));
+    socket.on('connect', () => {
+      setPlayerId(socket.id);
+      // Auto-reconnect if we had a game session
+      const savedCode = sessionStorage.getItem('sb_lobbyCode');
+      const savedName = sessionStorage.getItem('sb_playerName');
+      if (savedCode && savedName) {
+        socket.emit('reconnect_game', { lobbyCode: savedCode, playerName: savedName }, (res) => {
+          if (res?.success) {
+            setLobbyCode(res.lobbyCode);
+            setPlayerName(savedName);
+            setPhase(res.state);
+            setPlayerStates(res.playerStates);
+            setRound(res.round);
+            setInitiative(res.initiative || []);
+            setCurrentTurn(res.currentTurn);
+            setSpells(res.spells || []);
+            setCounters(res.counters || []);
+            setBattleLog(res.battleLog || []);
+          }
+        });
+      }
+    });
     socket.on('player_joined', ({ players: p }) => setPlayers(p));
     socket.on('player_left', ({ players: p, hostId: h }) => { setPlayers(p); setHostId(h); });
 
@@ -59,6 +81,8 @@ export default function App() {
     socket.on('warrior_picked', ({ pickedBy, pickedByName, warrior, draftComplete, nextPicker }) => {
       setBattleLog(prev => [...prev, { type: 'initiative', message: `${pickedByName} избира ${warrior.name}!` }]);
       setDraftOptions([]);
+      setLastDraftPick({ warrior, pickedByName });
+      setTimeout(() => setLastDraftPick(null), 2500);
       if (!draftComplete && nextPicker) {
         setCurrentPicker(nextPicker);
       }
@@ -75,6 +99,10 @@ export default function App() {
       setPlayerStates(ps);
       setTurnResults(null);
       setRoundComplete(false);
+    });
+
+    socket.on('turn_timeout', ({ playerId: pid, playerName: pname }) => {
+      setBattleLog(prev => [...prev, { type: 'stunned', message: `⏱️ ${pname} не действа навреме — автоматична атака!` }]);
     });
 
     socket.on('round_start', ({ round: r, initiative: init, turnOrder, currentTurn: ct, battleLog: log, playerStates: ps }) => {
@@ -128,6 +156,14 @@ export default function App() {
       setPhase('gameOver');
     });
 
+    // Reconnection events
+    socket.on('player_disconnected', ({ playerName: pname }) => {
+      setBattleLog(prev => [...prev, { type: 'stunned', message: `📡 ${pname} изгуби връзката...` }]);
+    });
+    socket.on('player_reconnected', ({ playerName: pname }) => {
+      setBattleLog(prev => [...prev, { type: 'initiative', message: `📡 ${pname} се свърза отново!` }]);
+    });
+
     socket.on('phase_change', ({ state, players: p }) => {
       setPhase(state);
       if (p) setPlayers(p);
@@ -140,13 +176,16 @@ export default function App() {
         setRound(0);
         setDraftOptions([]);
         setCounterPrompt(null);
+        sessionStorage.removeItem('sb_lobbyCode');
+        sessionStorage.removeItem('sb_playerName');
       }
     });
 
     return () => {
       ['connect','player_joined','player_left','game_started','draft_options','warrior_picked',
        'cards_dealt','battle_start','round_start','turn_result','private_state','game_over',
-       'phase_change','counter_prompt','waiting_for_counter']
+       'phase_change','counter_prompt','waiting_for_counter','turn_timeout',
+       'player_disconnected','player_reconnected']
         .forEach(e => socket.off(e));
     };
   }, []);
@@ -207,7 +246,7 @@ export default function App() {
         {phase === 'draft' && (
           <Draft socket={socket} playerId={playerId} draftRolls={draftRolls} draftOrder={draftOrder}
             currentPicker={currentPicker} setCurrentPicker={setCurrentPicker}
-            draftOptions={draftOptions} battleLog={battleLog} onError={showError} />
+            draftOptions={draftOptions} battleLog={battleLog} lastDraftPick={lastDraftPick} onError={showError} />
         )}
         {phase === 'battle' && (
           <Battle socket={socket} playerId={playerId} playerStates={playerStates}
