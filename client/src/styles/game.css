@@ -132,13 +132,21 @@
 
   /* ========== SPELL / COUNTER CARDS ========== */
   .spell-card {
-    @apply relative w-28 rounded-lg p-2 cursor-pointer transition-all duration-200 text-center border-2 flex flex-col items-center;
+    @apply relative w-28 rounded-lg p-2 cursor-pointer transition-all duration-200 text-center border-2 flex flex-col items-center min-w-0 shrink-0;
     background: linear-gradient(145deg, #1a2236, #0b0e14);
     border-color: rgba(59, 130, 246, 0.3);
   }
   .spell-card:hover {
     @apply -translate-y-1;
     filter: brightness(1.2);
+  }
+
+  /* Spell label tag next to spell cards in action bar */
+  .spell-label {
+    @apply text-[8px] font-black uppercase tracking-widest px-2 py-1 rounded;
+    color: #60a5fa;
+    background: rgba(59, 130, 246, 0.1);
+    border: 1px solid rgba(59, 130, 246, 0.2);
   }
   .spell-card.selected {
     @apply -translate-y-2;
@@ -170,6 +178,22 @@
   }
   .status-icon-sm {
     @apply inline-flex items-center justify-center;
+  }
+
+  /* Big stunned icon for the full-screen stunned overlay */
+  .stunned-icon-big {
+    @apply w-20 h-20 rounded-full mx-auto mb-4 flex items-center justify-center;
+    background: radial-gradient(circle, rgba(234, 179, 8, 0.15), transparent 70%);
+    border: 3px solid rgba(234, 179, 8, 0.4);
+    box-shadow: 0 0 30px rgba(234, 179, 8, 0.2), inset 0 0 20px rgba(234, 179, 8, 0.1);
+    animation: stun-ring-pulse 1.5s ease-in-out infinite;
+  }
+  .stunned-icon-big::after {
+    content: '✦';
+    @apply text-3xl;
+    color: #eab308;
+    text-shadow: 0 0 12px rgba(234, 179, 8, 0.6);
+    animation: shake 1s ease-in-out infinite;
   }
   .status-silenced {
     animation: silence-pulse 1.5s ease-in-out infinite;
@@ -203,35 +227,49 @@
   /* ========== ROUND TABLE ========== */
   .round-table {
     @apply relative mx-auto;
-    width: min(55vh, 500px);
-    height: min(55vh, 500px);
+    width: min(50vh, 460px);
+    height: min(50vh, 460px);
   }
   @media (max-width: 768px) {
-    .round-table { width: min(50vh, 340px); height: min(50vh, 340px); }
-    .table-seat { transform: rotate(var(--angle)) translateY(min(-22vh, -130px)) rotate(calc(-1 * var(--angle))) !important; }
+    .round-table { width: min(42vh, 320px); height: min(42vh, 320px); }
+    .table-seat { transform: rotate(var(--angle)) translateY(min(-18vh, -120px)) rotate(calc(-1 * var(--angle))) !important; }
   }
   .table-center {
     @apply absolute rounded-full flex items-center justify-center;
     top: 50%; left: 50%;
     transform: translate(-50%, -50%);
-    width: min(18vh, 180px); height: min(18vh, 180px);
+    width: min(13vh, 120px); height: min(13vh, 120px);
     background: radial-gradient(circle, rgba(0,180,255,0.08), transparent 70%);
     border: 1px solid rgba(0,180,255,0.15);
   }
   @media (max-width: 768px) {
-    .table-center { width: min(14vh, 100px); height: min(14vh, 100px); }
+    .table-center { width: min(12vh, 90px); height: min(12vh, 90px); }
   }
   .table-seat {
     @apply absolute flex flex-col items-center cursor-pointer;
     top: 50%; left: 50%;
     margin-top: -50px; margin-left: -50px;
     width: 100px;
-    transform: rotate(var(--angle)) translateY(min(-24vh, -200px)) rotate(calc(-1 * var(--angle)));
+    transform: rotate(var(--angle)) translateY(min(-21vh, -180px)) rotate(calc(-1 * var(--angle)));
     transition: filter 0.3s;
   }
   .table-seat:hover:not(.active-turn) .seat-avatar {
     border-color: rgba(255,255,255,0.5);
     box-shadow: 0 0 12px rgba(255,255,255,0.15);
+  }
+
+  /* Immune seat — cyan shield shimmer */
+  .seat-immune {
+    border-color: rgba(34, 211, 238, 0.5) !important;
+    box-shadow: 0 0 14px rgba(34, 211, 238, 0.25), inset 0 0 8px rgba(34, 211, 238, 0.1);
+    animation: immune-shimmer 2s ease-in-out infinite;
+  }
+  /* Hovered seat — subtle bright ring */
+  .seat-hovered {
+    border-color: rgba(255, 255, 255, 0.6) !important;
+    box-shadow: 0 0 16px rgba(255, 255, 255, 0.2);
+    transform: scale(1.08);
+    transition: all 0.2s ease;
   }
   .table-seat.active-turn {
     animation: turn-glow 1s ease-in-out infinite;
@@ -245,7 +283,7 @@
   }
 
   .seat-avatar {
-    @apply w-14 h-14 rounded-full flex items-center justify-center text-white font-bold text-lg border-2 transition-all overflow-hidden relative;
+    @apply w-16 h-16 rounded-full flex items-center justify-center text-white font-bold text-lg border-2 transition-all overflow-hidden relative;
     background: linear-gradient(135deg, #1a2236, #243049);
     border-color: rgba(148, 163, 184, 0.3);
   }
@@ -274,10 +312,10 @@
   }
 
   .seat-hp {
-    @apply w-full mt-1;
+    @apply w-full mt-1.5;
   }
   .seat-hp-bar {
-    @apply h-1.5 rounded-full overflow-hidden;
+    @apply h-2 rounded-full overflow-hidden;
     background: rgba(255,255,255,0.08);
   }
   .seat-hp-fill {
@@ -304,6 +342,14 @@
   .anim-vs-icon {
     @apply text-4xl;
     filter: drop-shadow(0 0 15px rgba(255, 200, 0, 0.6));
+  }
+
+  /* VS text for turn animation (replaces emoji) */
+  .anim-vs-text {
+    @apply text-4xl font-title font-black uppercase tracking-wider;
+    color: #fbbf24;
+    text-shadow: 0 0 20px rgba(251, 191, 36, 0.7), 0 0 40px rgba(251, 191, 36, 0.3);
+    animation: vs-pulse 0.8s ease-in-out infinite;
   }
   .damage-text-shadow {
     text-shadow: 0 0 20px rgba(239, 68, 68, 0.8), 0 0 40px rgba(239, 68, 68, 0.4);

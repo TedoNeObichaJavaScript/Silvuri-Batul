@@ -61,6 +61,9 @@ export default {
         'silence-pulse': 'silence-pulse 1.5s ease-in-out infinite',
         'freeze-shimmer': 'freeze-shimmer 2s ease-in-out infinite',
         'poison-drip': 'poison-drip 2s ease-in-out infinite',
+        'immune-shimmer': 'immune-shimmer 2s ease-in-out infinite',
+        'vs-pulse': 'vs-pulse 0.8s ease-in-out infinite',
+        'stun-ring-pulse': 'stun-ring-pulse 1.5s ease-in-out infinite',
       },
       keyframes: {
         'glow-pulse': {
@@ -190,6 +193,18 @@ export default {
         'poison-drip': {
           '0%, 100%': { filter: 'brightness(1)' },
           '50%': { filter: 'brightness(0.7) saturate(1.5)' },
+        },
+        'immune-shimmer': {
+          '0%, 100%': { boxShadow: '0 0 10px rgba(34, 211, 238, 0.2)', borderColor: 'rgba(34, 211, 238, 0.4)' },
+          '50%': { boxShadow: '0 0 22px rgba(34, 211, 238, 0.4)', borderColor: 'rgba(34, 211, 238, 0.7)' },
+        },
+        'vs-pulse': {
+          '0%, 100%': { transform: 'scale(1)', opacity: '1' },
+          '50%': { transform: 'scale(1.15)', opacity: '0.85' },
+        },
+        'stun-ring-pulse': {
+          '0%, 100%': { boxShadow: '0 0 20px rgba(234, 179, 8, 0.15)', borderColor: 'rgba(234, 179, 8, 0.3)' },
+          '50%': { boxShadow: '0 0 40px rgba(234, 179, 8, 0.35)', borderColor: 'rgba(234, 179, 8, 0.6)' },
         },
       }
     },
