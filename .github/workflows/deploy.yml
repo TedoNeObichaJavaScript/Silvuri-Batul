@@ -28,6 +28,8 @@ jobs:
 
       - name: Install and build client
         working-directory: client
+        env:
+          VITE_SERVER_URL: ${{ secrets.VITE_SERVER_URL }}
         run: |
           npm install
           npm run build
