@@ -1,5 +1,6 @@
 import React, { memo } from 'react';
 import { assetUrl } from '../utils/assetUrl';
+import { getSpellIcon } from '../utils/spellIcons';
 
 const RARITY_COLORS = {
   common: '#8a9bb0',
@@ -21,15 +22,16 @@ const RARITY_NAMES = {
   owner: 'Собственик'
 };
 
-// Styled icon component — renders icon symbol inside a colored glowing container
-export const SpellIcon = memo(function SpellIcon({ icon, iconColor, size = 'md' }) {
+// Styled icon component — renders custom SVG inside a colored glowing container
+export const SpellIcon = memo(function SpellIcon({ icon, iconColor, size = 'md', spellId }) {
   const sizes = {
-    sm: { wrapper: 'w-7 h-7', font: 'text-sm' },
-    md: { wrapper: 'w-9 h-9', font: 'text-lg' },
-    lg: { wrapper: 'w-12 h-12', font: 'text-2xl' },
+    sm: { wrapper: 'w-7 h-7', svgSize: 16, font: 'text-sm' },
+    md: { wrapper: 'w-9 h-9', svgSize: 20, font: 'text-lg' },
+    lg: { wrapper: 'w-12 h-12', svgSize: 28, font: 'text-2xl' },
   };
   const s = sizes[size] || sizes.md;
   const color = iconColor || '#3b82f6';
+  const IconComponent = spellId ? getSpellIcon(spellId) : null;
 
   return (
     <div
@@ -41,9 +43,13 @@ export const SpellIcon = memo(function SpellIcon({ icon, iconColor, size = 'md' 
         boxShadow: `0 0 12px ${color}44, inset 0 0 8px ${color}22`,
       }}
     >
-      <span className={s.font} style={{ filter: `drop-shadow(0 0 4px ${color}88)` }}>
-        {icon}
-      </span>
+      {IconComponent ? (
+        <IconComponent color={color} size={s.svgSize} />
+      ) : (
+        <span className={sizes[size]?.font || 'text-lg'} style={{ filter: `drop-shadow(0 0 4px ${color}88)` }}>
+          {icon}
+        </span>
+      )}
     </div>
   );
 });
@@ -108,8 +114,8 @@ export const SpellCard = memo(function SpellCard({ spell, onClick, selected, dis
       }}
       onClick={() => !disabled && onClick?.(spell)}
     >
-      <SpellIcon icon={spell.icon} iconColor={color} size="md" />
-      <div className="text-[11px] font-bold text-white truncate mt-1">{spell.name}</div>
+      <SpellIcon icon={spell.icon} iconColor={color} size="md" spellId={spell.id} />
+      <div className="text-[10px] font-bold text-white leading-tight mt-1">{spell.name}</div>
       <div className="text-[9px] text-steel-400 leading-tight mt-1">{spell.description}</div>
     </div>
   );
