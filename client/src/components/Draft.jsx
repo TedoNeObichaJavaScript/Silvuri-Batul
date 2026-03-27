@@ -1,33 +1,50 @@
 import React from 'react';
 import Card from './Card';
+import { SFX } from '../utils/sounds';
+import { assetUrl } from '../utils/assetUrl';
 
 export default function Draft({
   socket, playerId, draftRolls, draftOrder,
-  currentPicker, setCurrentPicker, draftOptions, battleLog, onError
+  currentPicker, setCurrentPicker, draftOptions, battleLog, lastDraftPick, onError
 }) {
   const isMyTurn = currentPicker === playerId;
   const pickerPlayer = draftOrder.find(p => p.id === currentPicker);
 
   const pickWarrior = (card) => {
     if (!isMyTurn) return onError('Не е твой ред!');
+    SFX.cardPick();
     socket.emit('draft_pick', { warriorId: card.id }, (res) => {
       if (res.error) return onError(res.error);
     });
   };
 
   return (
-    <div className="px-4 py-4 animate-slide-up">
+    <div className="px-4 py-4 animate-slide-up relative">
+      {/* ===== PICK REVEAL OVERLAY ===== */}
+      {lastDraftPick && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none" style={{ background: 'rgba(0,0,0,0.6)' }}>
+          <div className="flex flex-col items-center animate-card-enter" style={{ filter: 'drop-shadow(0 0 30px rgba(0, 180, 255, 0.5))' }}>
+            <Card card={lastDraftPick.warrior} />
+            <div className="mt-3 text-center animate-slide-up">
+              <span className="text-lg font-title text-accent-blue">{lastDraftPick.pickedByName}</span>
+              <span className="text-steel-400 text-sm ml-2">избира</span>
+              <span className="text-lg font-bold text-white ml-2">{lastDraftPick.warrior.name}!</span>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="text-center mb-6">
         <h2 className="text-2xl font-title text-accent-blue mb-2">PENTAD SELECTION</h2>
-        <p className="text-steel-400 text-sm mb-4">Избери своя воин от 5-те предложени</p>
+        <p className="text-steel-400 text-sm mb-4">Избери своя силвър от 5-те предложени</p>
 
         <div className={`inline-block px-6 py-2 rounded-full text-lg font-bold ${
           isMyTurn
             ? 'bg-accent-blue/20 text-accent-blue animate-glow-pulse border border-accent-blue/40'
             : 'bg-dark-700 text-steel-400 border border-steel-600/30'
         }`}>
-          {isMyTurn ? 'ТВОЙ РЕД! Избери воин!' : `${pickerPlayer?.name || '...'} избира...`}
+          {isMyTurn ? 'ТВОЙ РЕД! Избери силвър!' : `${pickerPlayer?.name || '...'} избира...`}
         </div>
       </div>
 
@@ -51,7 +68,7 @@ export default function Draft({
       {/* Warrior Options */}
       {isMyTurn && draftOptions.length > 0 && (
         <div className="mb-8">
-          <h3 className="text-sm text-steel-400 mb-3 uppercase tracking-wider text-center">Твоите 5 Воина</h3>
+          <h3 className="text-sm text-steel-400 mb-3 uppercase tracking-wider text-center">Твоите 5 Силвъра</h3>
           <div className="flex flex-wrap gap-4 justify-center">
             {draftOptions.map(card => (
               <Card key={card.id} card={card} onClick={pickWarrior} />
@@ -61,7 +78,7 @@ export default function Draft({
       )}
 
       {/* Waiting message */}
-      {!isMyTurn && (
+      {!isMyTurn && !lastDraftPick && (
         <div className="flex flex-col items-center justify-center py-12 gap-4">
           <div className="w-10 h-10 border-4 border-accent-blue/30 border-t-accent-blue rounded-full animate-spin" />
           <p className="text-steel-400">Чакаме {pickerPlayer?.name || '...'} да избере...</p>
