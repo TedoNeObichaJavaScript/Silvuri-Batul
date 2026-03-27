@@ -94,5 +94,74 @@ export const SFX = {
   timeout() {
     playTone(200, 0.3, 'square', 0.15);
     setTimeout(() => playTone(150, 0.4, 'square', 0.15), 200);
+  },
+  turnAnnounce() {
+    playNoise(0.06, 0.08);
+    playTone(220, 0.25, 'sawtooth', 0.12);
+    setTimeout(() => playTone(330, 0.25, 'sawtooth', 0.15), 80);
+    setTimeout(() => playTone(440, 0.3, 'triangle', 0.18), 160);
+    setTimeout(() => playTone(660, 0.2, 'sine', 0.12), 300);
+  },
+  bigHit() {
+    playNoise(0.2, 0.3);
+    playTone(60, 0.35, 'square', 0.28);
+    playTone(90, 0.25, 'sawtooth', 0.22);
+    setTimeout(() => playNoise(0.15, 0.2), 80);
+    setTimeout(() => playTone(45, 0.4, 'square', 0.18), 120);
+  },
+  spellCast() {
+    playTone(400, 0.06, 'sine', 0.1);
+    setTimeout(() => playTone(600, 0.08, 'sine', 0.12), 40);
+    setTimeout(() => playTone(800, 0.1, 'sine', 0.14), 80);
+    setTimeout(() => playTone(1000, 0.12, 'triangle', 0.16), 120);
+    setTimeout(() => playTone(1200, 0.18, 'sine', 0.18), 160);
+    setTimeout(() => playNoise(0.08, 0.06), 220);
+  },
+  counterReveal() {
+    playTone(800, 0.04, 'square', 0.12);
+    setTimeout(() => playTone(600, 0.08, 'square', 0.18), 40);
+    setTimeout(() => playTone(1000, 0.12, 'triangle', 0.18), 80);
+    setTimeout(() => playNoise(0.06, 0.1), 100);
+  },
+  killConfirm() {
+    playNoise(0.25, 0.22);
+    playTone(200, 0.18, 'sawtooth', 0.22);
+    setTimeout(() => playTone(150, 0.22, 'sawtooth', 0.22), 120);
+    setTimeout(() => playTone(100, 0.3, 'sawtooth', 0.25), 240);
+    setTimeout(() => playTone(60, 0.45, 'square', 0.2), 360);
+    setTimeout(() => playNoise(0.35, 0.18), 420);
+  },
+  diceRoll() {
+    // Rapid clicking ticks that slow down — like a rolling die settling
+    const ticks = [40, 80, 120, 170, 230, 310, 420, 560, 740];
+    ticks.forEach((t, i) => {
+      setTimeout(() => {
+        playTone(300 + Math.random() * 200, 0.04, 'square', 0.12);
+        playNoise(0.02, 0.06);
+      }, t);
+    });
+    // Final landing thud
+    setTimeout(() => { playTone(180, 0.12, 'square', 0.18); playNoise(0.08, 0.12); }, 820);
+  },
+  coinFlip() {
+    // Metallic spinning coin — alternating bright tones
+    const flips = [0, 60, 130, 210, 300, 410, 540, 700];
+    flips.forEach((t, i) => {
+      setTimeout(() => {
+        playTone(800 + (i % 2) * 400, 0.04, 'triangle', 0.1);
+      }, t);
+    });
+    // Coin lands — bright ping
+    setTimeout(() => { playTone(1200, 0.15, 'sine', 0.18); playNoise(0.04, 0.08); }, 800);
+  },
+  rollSuccess() {
+    playTone(600, 0.08, 'sine', 0.15);
+    setTimeout(() => playTone(800, 0.1, 'sine', 0.18), 80);
+    setTimeout(() => playTone(1000, 0.15, 'triangle', 0.2), 160);
+  },
+  rollFail() {
+    playTone(400, 0.12, 'square', 0.15);
+    setTimeout(() => playTone(250, 0.2, 'square', 0.12), 100);
+    setTimeout(() => playTone(150, 0.25, 'sawtooth', 0.1), 200);
   }
 };

@@ -21,6 +21,11 @@ const EMOTES = [
   { id: 'rage', label: 'RAGE', icon: '🤬' },
 ];
 
+const RARITY_GLOW = {
+  common: '#8a9bb0', rare: '#3b82f6', epic: '#8b5cf6',
+  legendary: '#f59e0b', secret: '#dc2626', cosmic: '#ff00ff', owner: '#ff0000'
+};
+
 // Status badge component — replaces emoji icons
 function StatusBadge({ label, color, pulse }) {
   return (
@@ -99,6 +104,9 @@ export default function Battle({
   const [showEmotes, setShowEmotes] = useState(false);
   const [floatingEmotes, setFloatingEmotes] = useState([]);
   const [roundRecap, setRoundRecap] = useState(null);
+  const [turnBanner, setTurnBanner] = useState(null);
+  const bannerTimeoutsRef = useRef([]);
+  const lastResultsTime = useRef(0);
 
   // The card to show in the left panel — hovered player or self
   const previewCard = useMemo(() => {
@@ -135,6 +143,35 @@ export default function Battle({
     }
   }, [roundComplete]);
 
+  // Track when turn results arrive (for banner delay calculation)
+  useEffect(() => {
+    if (turnResults && turnResults.length > 0) {
+      lastResultsTime.current = Date.now();
+    }
+  }, [turnResults]);
+
+  // Turn announcement banner — shows for ALL players when turn changes
+  useEffect(() => {
+    bannerTimeoutsRef.current.forEach(clearTimeout);
+    bannerTimeoutsRef.current = [];
+    setTurnBanner(null);
+    if (!currentTurn || roundComplete) return;
+    const p = playerStates[currentTurn];
+    if (!p || p.eliminated) return;
+
+    const recentResults = Date.now() - lastResultsTime.current < 300;
+    const delay = recentResults ? 4500 : 200;
+
+    bannerTimeoutsRef.current.push(
+      setTimeout(() => {
+        setTurnBanner({ name: p.name, warrior: p.warrior, isMe: currentTurn === playerId });
+        SFX.turnAnnounce();
+      }, delay),
+      setTimeout(() => setTurnBanner(null), delay + 2200)
+    );
+    return () => bannerTimeoutsRef.current.forEach(clearTimeout);
+  }, [currentTurn]);
+
   useEffect(() => {
     const handleEmote = ({ playerId: pid, playerName: pname, emoteId }) => {
       const emote = EMOTES.find(e => e.id === emoteId);
@@ -164,33 +201,73 @@ export default function Battle({
     if (logRef.current) logRef.current.scrollTop = logRef.current.scrollHeight;
   }, [battleLog]);
 
-  // ===== TURN ANIMATION =====
+  // ===== TURN ANIMATION (enhanced — sequential phases with roll support) =====
   useEffect(() => {
-    if (!turnResults?.length || !lastAction) return;
     animTimeouts.current.forEach(clearTimeout);
     animTimeouts.current = [];
+    if (!turnResults?.length || !lastAction) { setTurnAnim(null); return; }
     const totalDmg = turnResults.filter(r => r.type === 'attack').reduce((sum, r) => sum + (r.damage || 0), 0);
     const totalHeal = turnResults.filter(r => r.type === 'heal').reduce((sum, r) => sum + (r.heal || 0), 0);
     const hasElim = turnResults.some(r => r.type === 'elimination');
     const hasBan = turnResults.some(r => r.type === 'ban');
     const hasCounter = turnResults.some(r => r.type === 'counter_played' || r.type === 'counter');
 
-    setTurnAnim({ phase: 'play', action: lastAction, totalDmg, totalHeal, hasElim, hasBan, hasCounter });
+    // Extract rollData from any result that has it
+    const rollEntry = turnResults.find(r => r.rollData);
+    const rollData = rollEntry?.rollData || null;
+
+    const hasSpell = !!lastAction.spell;
+
+    const animState = { phase: 'play', action: lastAction, totalDmg, totalHeal, hasElim, hasBan, hasCounter, rollData };
+    setTurnAnim(animState);
     SFX.attack();
 
-    if (lastAction.spell) {
-      animTimeouts.current.push(setTimeout(() => { setTurnAnim(prev => prev ? { ...prev, phase: 'spell' } : null); SFX.spell(); }, 500));
+    // Sequential phase scheduler
+    let t = 700;
+    const sched = (delay, fn) => { animTimeouts.current.push(setTimeout(fn, delay)); };
+
+    // Spell phase
+    if (hasSpell) {
+      sched(t, () => { setTurnAnim(prev => prev ? { ...prev, phase: 'spell' } : null); SFX.spellCast(); });
+      t += 900;
     }
-    animTimeouts.current.push(setTimeout(() => {
+
+    // Roll phase (coin/dice) — only if rollData exists
+    if (rollData) {
+      sched(t, () => {
+        setTurnAnim(prev => prev ? { ...prev, phase: 'roll' } : null);
+        if (rollData.rollType === 'dice') SFX.diceRoll(); else SFX.coinFlip();
+      });
+      // Show roll result after animation settles
+      sched(t + 900, () => {
+        setTurnAnim(prev => prev ? { ...prev, phase: 'roll_result' } : null);
+        if (rollData.rollType === 'coin') { rollData.success ? SFX.rollSuccess() : SFX.rollFail(); }
+        else { rollData.value >= 4 ? SFX.rollSuccess() : SFX.rollFail(); }
+      });
+      t += 1600;
+    }
+
+    // Impact phase
+    sched(t, () => {
       setTurnAnim(prev => prev ? { ...prev, phase: 'impact' } : null);
-      if (totalDmg > 0) { SFX.hit(); setIsShaking(true); setTimeout(() => setIsShaking(false), 400); } else { SFX.miss(); }
+      if (totalDmg > 0) { SFX.bigHit(); setIsShaking(true); setTimeout(() => setIsShaking(false), 600); } else if (totalHeal === 0) { SFX.miss(); }
       if (totalHeal > 0) SFX.heal();
-    }, lastAction.spell ? 1000 : 700));
+    });
+    t += 900;
+
+    // Counter flash phase
     if (hasCounter) {
-      animTimeouts.current.push(setTimeout(() => { setTurnAnim(prev => prev ? { ...prev, phase: 'counter_flash' } : null); SFX.counter(); }, lastAction.spell ? 1300 : 1000));
+      sched(t, () => { setTurnAnim(prev => prev ? { ...prev, phase: 'counter_flash' } : null); SFX.counterReveal(); });
+      t += 800;
     }
-    animTimeouts.current.push(setTimeout(() => { setTurnAnim(prev => prev ? { ...prev, phase: 'resolve' } : null); if (hasElim || hasBan) SFX.elimination(); }, lastAction.spell ? 1900 : 1600));
-    animTimeouts.current.push(setTimeout(() => { setTurnAnim(null); }, lastAction.spell ? 2500 : 2200));
+
+    // Resolve phase
+    sched(t, () => { setTurnAnim(prev => prev ? { ...prev, phase: 'resolve' } : null); if (hasElim || hasBan) SFX.killConfirm(); });
+    t += 900;
+
+    // Clear
+    sched(t, () => { setTurnAnim(null); });
+
     return () => animTimeouts.current.forEach(clearTimeout);
   }, [turnResults, lastAction]);
 
@@ -219,7 +296,49 @@ export default function Battle({
   const previewHpColor = previewHpPct > 50 ? '#22c55e' : previewHpPct > 25 ? '#f59e0b' : '#ef4444';
 
   return (
-    <div className={`h-full flex flex-col overflow-hidden ${isShaking ? 'animate-battle-shake' : ''}`}>
+    <div className={`h-full flex flex-col overflow-hidden ${isShaking ? 'animate-heavy-shake' : ''}`}>
+      {/* ===== KILL SCREEN FLASH ===== */}
+      {turnAnim?.phase === 'resolve' && (turnAnim.hasElim || turnAnim.hasBan) && (
+        <div className="kill-screen-flash" />
+      )}
+
+      {/* ===== TURN ANNOUNCEMENT BANNER ===== */}
+      {turnBanner && (
+        <div className="fixed inset-0 z-40 pointer-events-none turn-banner-overlay">
+          <div className="absolute inset-x-0 top-0 h-[10%] bg-black turn-banner-bar" style={{ transformOrigin: 'top' }} />
+          <div className="absolute inset-x-0 bottom-0 h-[10%] bg-black turn-banner-bar" style={{ transformOrigin: 'bottom' }} />
+          <div className="absolute inset-0" style={{ background: 'radial-gradient(ellipse at center, rgba(0,0,0,0.75) 0%, rgba(0,0,0,0.4) 50%, transparent 100%)' }} />
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="flex items-center gap-8 turn-banner-content">
+              <div className="w-16 h-px rounded-full" style={{ background: `linear-gradient(to right, transparent, ${turnBanner.isMe ? '#00b4ff' : '#64748b'})` }} />
+              {turnBanner.warrior && (
+                <div className="relative">
+                  <img src={assetUrl(turnBanner.warrior.image)} alt=""
+                    className="w-28 h-28 rounded-2xl object-cover border-2 turn-banner-portrait"
+                    style={{ borderColor: RARITY_GLOW[turnBanner.warrior.rarity] || '#00b4ff', boxShadow: `0 0 40px ${RARITY_GLOW[turnBanner.warrior.rarity] || '#00b4ff'}50, 0 0 80px ${RARITY_GLOW[turnBanner.warrior.rarity] || '#00b4ff'}20` }}
+                  />
+                  <div className="absolute -inset-2 rounded-3xl pointer-events-none" style={{ border: `1px solid ${RARITY_GLOW[turnBanner.warrior.rarity] || '#00b4ff'}30` }} />
+                </div>
+              )}
+              <div>
+                <div className="text-xs uppercase tracking-[0.3em] font-bold mb-1.5" style={{ color: turnBanner.isMe ? '#00b4ff' : '#94a3b8', textShadow: turnBanner.isMe ? '0 0 15px rgba(0,180,255,0.5)' : 'none' }}>
+                  {turnBanner.isMe ? 'ТВОЯТ ХОД' : 'ХОД НА'}
+                </div>
+                <div className={`text-5xl font-title ${turnBanner.isMe ? 'text-accent-blue' : 'text-white'}`} style={{ textShadow: turnBanner.isMe ? '0 0 40px rgba(0,180,255,0.6)' : '0 2px 10px rgba(0,0,0,0.5)' }}>
+                  {turnBanner.name}
+                </div>
+                {turnBanner.warrior && (
+                  <div className="text-sm font-game mt-1" style={{ color: RARITY_GLOW[turnBanner.warrior.rarity] || '#94a3b8' }}>
+                    {turnBanner.warrior.name}
+                  </div>
+                )}
+              </div>
+              <div className="w-16 h-px rounded-full" style={{ background: `linear-gradient(to left, transparent, ${turnBanner.isMe ? '#00b4ff' : '#64748b'})` }} />
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ===== COUNTER PROMPT OVERLAY ===== */}
       {counterPrompt && (
         <div className="counter-prompt-overlay">
@@ -427,66 +546,160 @@ export default function Battle({
             </div>
           ))}
 
-          {/* Turn Animation */}
+          {/* Turn Animation — enhanced */}
           {turnAnim && (
             <div className="turn-anim-overlay">
               <div className={`turn-anim-container ${turnAnim.phase === 'resolve' ? 'animate-fade-out' : ''}`}>
-                <div className="anim-fighter animate-slam-left">
+                {/* Attacker */}
+                <div className="anim-fighter-big animate-slam-left">
                   {turnAnim.action.attackerWarrior && (
-                    <div className="anim-card-display">
+                    <div className="anim-card-big relative">
+                      {/* Energy ring behind attacker */}
+                      <div className="anim-energy-ring" style={{ width: '140px', height: '140px', top: '-6px', left: '50%', marginLeft: '-70px', borderColor: `${RARITY_GLOW[turnAnim.action.attackerWarrior.rarity] || '#00b4ff'}40` }} />
                       <img src={assetUrl(turnAnim.action.attackerWarrior.image)} alt=""
-                        className={`w-20 h-20 rounded-xl object-cover border-2 shadow-lg ${turnAnim.action.attackerWarrior.rarity === 'owner' ? 'border-owner-glow shadow-red-500/30' : 'border-accent-blue/60 shadow-accent-blue/20'}`} />
-                      <div className="text-[10px] font-bold text-accent-blue mt-1 text-center truncate w-24">{turnAnim.action.attackerName}</div>
+                        style={{
+                          borderColor: RARITY_GLOW[turnAnim.action.attackerWarrior.rarity] || '#00b4ff',
+                          boxShadow: `0 0 30px ${RARITY_GLOW[turnAnim.action.attackerWarrior.rarity] || '#00b4ff'}40, 0 8px 25px rgba(0,0,0,0.4)`,
+                          borderWidth: turnAnim.action.attackerWarrior.rarity === 'owner' ? '3px' : '2px',
+                          borderStyle: 'solid'
+                        }} />
+                      <div className="fighter-name text-accent-blue">{turnAnim.action.attackerName}</div>
+                      {/* Ability name tag */}
+                      {turnAnim.action.attackerWarrior.ability && turnAnim.phase === 'play' && (
+                        <div className="anim-ability-name">{turnAnim.action.attackerWarrior.ability.name}</div>
+                      )}
                     </div>
                   )}
                 </div>
-                <div className="anim-center">
-                  {turnAnim.phase === 'play' && <div className="anim-vs-text">VS</div>}
+
+                {/* Center content */}
+                <div className="anim-center" style={{ minWidth: '120px' }}>
+                  {turnAnim.phase === 'play' && <div className="anim-vs-big">VS</div>}
+
                   {turnAnim.phase === 'spell' && turnAnim.action.spell && (
-                    <div className="animate-spell-burst">
+                    <div className="anim-spell-reveal" style={{ borderColor: `${turnAnim.action.spell.iconColor}30` }}>
                       <SpellIcon icon={turnAnim.action.spell.icon} iconColor={turnAnim.action.spell.iconColor} size="lg" spellId={turnAnim.action.spell.id} />
-                      <div className="text-[10px] font-bold mt-1 text-center" style={{ color: turnAnim.action.spell.iconColor }}>{turnAnim.action.spell.name}</div>
+                      <div className="spell-name-big" style={{ color: turnAnim.action.spell.iconColor }}>{turnAnim.action.spell.name}</div>
                     </div>
                   )}
+
+                  {/* Coin / Dice Roll Animation */}
+                  {turnAnim.phase === 'roll' && turnAnim.rollData && (
+                    <div className="roll-container">
+                      <div className="roll-label">{turnAnim.rollData.label}</div>
+                      {turnAnim.rollData.rollType === 'coin' ? (
+                        <div className="coin-flip">?</div>
+                      ) : (
+                        <div className="dice-roll">
+                          <span style={{ animation: 'dice-tumble 1s ease-out' }}>?</span>
+                        </div>
+                      )}
+                      <div className="roll-chance">
+                        {turnAnim.rollData.rollType === 'coin'
+                          ? `${Math.round((turnAnim.rollData.chance || 0.5) * 100)}% шанс`
+                          : 'D6 зарче'}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Roll Result */}
+                  {turnAnim.phase === 'roll_result' && turnAnim.rollData && (
+                    <div className="roll-container">
+                      <div className="roll-label">{turnAnim.rollData.label}</div>
+                      {turnAnim.rollData.rollType === 'coin' ? (
+                        <div className={`coin-flip ${turnAnim.rollData.success ? 'success' : 'fail'}`}>
+                          {turnAnim.rollData.success ? '✓' : '✗'}
+                        </div>
+                      ) : (
+                        <div className="dice-roll" style={{
+                          boxShadow: turnAnim.rollData.value >= 4
+                            ? '0 0 40px rgba(34, 197, 94, 0.5), 0 6px 20px rgba(0,0,0,0.4)'
+                            : turnAnim.rollData.value === 1
+                              ? '0 0 40px rgba(239, 68, 68, 0.5), 0 6px 20px rgba(0,0,0,0.4)'
+                              : undefined
+                        }}>
+                          {turnAnim.rollData.value}
+                        </div>
+                      )}
+                      <div className={`roll-result-text ${
+                        turnAnim.rollData.rollType === 'coin'
+                          ? (turnAnim.rollData.success ? 'success' : 'fail')
+                          : (turnAnim.rollData.value >= 4 ? 'success' : turnAnim.rollData.value === 1 ? 'fail' : '')
+                      }`}>
+                        {turnAnim.rollData.rollType === 'coin'
+                          ? (turnAnim.rollData.success ? 'УСПЕХ!' : 'НЕУСПЕХ!')
+                          : (turnAnim.rollData.value === 6 ? 'ДЖАКПОТ!' : turnAnim.rollData.value >= 4 ? 'ДОБРО!' : turnAnim.rollData.value === 1 ? 'ПРОМАХ!' : 'НОРМАЛНО')}
+                      </div>
+                    </div>
+                  )}
+
                   {turnAnim.phase === 'impact' && turnAnim.totalDmg > 0 && (
-                    <div className="animate-damage-pop text-4xl font-title font-bold text-red-500 damage-text-shadow">-{turnAnim.totalDmg}</div>
+                    <div className="anim-damage-huge text-red-500">-{turnAnim.totalDmg}</div>
                   )}
                   {turnAnim.phase === 'impact' && turnAnim.totalDmg === 0 && (
-                    <div className="animate-damage-pop text-2xl font-title text-steel-400">MISS</div>
+                    <div className="anim-miss-big">MISS</div>
                   )}
+
                   {turnAnim.phase === 'counter_flash' && turnAnim.action.counter && (
-                    <div className="animate-spell-burst">
+                    <div className="anim-counter-reveal">
                       <SpellIcon icon={turnAnim.action.counter.icon} iconColor={turnAnim.action.counter.iconColor} size="lg" spellId={turnAnim.action.counter.id} />
-                      <div className="text-[10px] font-bold mt-1 text-center" style={{ color: turnAnim.action.counter.iconColor }}>{turnAnim.action.counter.name}</div>
+                      <div className="text-sm font-bold" style={{ color: turnAnim.action.counter.iconColor }}>{turnAnim.action.counter.name}</div>
                     </div>
                   )}
+
                   {turnAnim.phase === 'resolve' && turnAnim.hasElim && !turnAnim.hasBan && (
-                    <div className="animate-elimination-skull"><span className="text-4xl font-title text-red-500" style={{ textShadow: '0 0 20px rgba(239,68,68,0.8)' }}>KILL</span></div>
+                    <div className="anim-kill-big">KILL</div>
                   )}
                   {turnAnim.phase === 'resolve' && turnAnim.hasBan && (
-                    <div className="animate-elimination-skull text-center">
-                      <div className="text-3xl font-title text-red-500" style={{ textShadow: '0 0 20px rgba(239,68,68,0.8)' }}>BANNED</div>
+                    <div className="anim-kill-big">BANNED</div>
+                  )}
+
+                  {/* Roll result badge during impact/counter/resolve */}
+                  {turnAnim.rollData && (turnAnim.phase === 'impact' || turnAnim.phase === 'counter_flash') && (
+                    <div className="flex items-center gap-2 mt-2 px-2 py-1 rounded-lg" style={{
+                      border: `1px solid ${turnAnim.rollData.rollType === 'coin' ? (turnAnim.rollData.success ? 'rgba(34,197,94,0.4)' : 'rgba(239,68,68,0.4)') : 'rgba(251,191,36,0.4)'}`,
+                      background: turnAnim.rollData.rollType === 'coin' ? (turnAnim.rollData.success ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)') : 'rgba(251,191,36,0.1)'
+                    }}>
+                      <span className="text-lg">{turnAnim.rollData.rollType === 'dice' ? '🎲' : '🪙'}</span>
+                      <span className="text-[9px] font-bold" style={{
+                        color: turnAnim.rollData.rollType === 'coin' ? (turnAnim.rollData.success ? '#22c55e' : '#ef4444') : '#fbbf24'
+                      }}>
+                        {turnAnim.rollData.rollType === 'coin'
+                          ? (turnAnim.rollData.success ? `${turnAnim.rollData.label} ✓` : `${turnAnim.rollData.label} ✗`)
+                          : `${turnAnim.rollData.label}: ${turnAnim.rollData.value}`}
+                      </span>
                     </div>
                   )}
+
+                  {/* Spell badge during non-spell phases */}
                   {turnAnim.action.spell && turnAnim.phase !== 'resolve' && turnAnim.phase !== 'spell' && (
-                    <div className="anim-spell-badge" style={{ borderColor: `${turnAnim.action.spell.iconColor}50`, background: `${turnAnim.action.spell.iconColor}15` }}>
+                    <div className="anim-spell-badge mt-2" style={{ borderColor: `${turnAnim.action.spell.iconColor}50`, background: `${turnAnim.action.spell.iconColor}15` }}>
                       <SpellIcon icon={turnAnim.action.spell.icon} iconColor={turnAnim.action.spell.iconColor} size="sm" spellId={turnAnim.action.spell.id} />
-                      <span className="text-[8px] font-bold ml-1" style={{ color: turnAnim.action.spell.iconColor }}>{turnAnim.action.spell.name}</span>
+                      <span className="text-[9px] font-bold ml-1.5" style={{ color: turnAnim.action.spell.iconColor }}>{turnAnim.action.spell.name}</span>
                     </div>
                   )}
+                  {/* Counter badge during impact */}
                   {turnAnim.action.counter && turnAnim.phase === 'impact' && (
-                    <div className="anim-counter-badge" style={{ borderColor: `${turnAnim.action.counter.iconColor}50`, background: `${turnAnim.action.counter.iconColor}15` }}>
+                    <div className="anim-counter-badge mt-1" style={{ borderColor: `${turnAnim.action.counter.iconColor}50`, background: `${turnAnim.action.counter.iconColor}15` }}>
                       <SpellIcon icon={turnAnim.action.counter.icon} iconColor={turnAnim.action.counter.iconColor} size="sm" spellId={turnAnim.action.counter.id} />
-                      <span className="text-[8px] font-bold ml-1" style={{ color: turnAnim.action.counter.iconColor }}>{turnAnim.action.counter.name}</span>
+                      <span className="text-[9px] font-bold ml-1.5" style={{ color: turnAnim.action.counter.iconColor }}>{turnAnim.action.counter.name}</span>
                     </div>
                   )}
                 </div>
-                <div className="anim-fighter animate-slam-right">
+
+                {/* Target */}
+                <div className="anim-fighter-big animate-slam-right">
                   {turnAnim.action.targetWarrior && (
-                    <div className="anim-card-display">
+                    <div className="anim-card-big">
                       <img src={assetUrl(turnAnim.action.targetWarrior.image)} alt=""
-                        className={`w-20 h-20 rounded-xl object-cover border-2 shadow-lg ${turnAnim.phase === 'impact' ? 'border-red-500/80 shadow-red-500/30 animate-shake' : 'border-red-500/40 shadow-red-500/10'}`} />
-                      <div className="text-[10px] font-bold text-red-400 mt-1 text-center truncate w-24">{turnAnim.action.targetName}</div>
+                        className={turnAnim.phase === 'impact' ? 'animate-shake' : ''}
+                        style={{
+                          borderColor: turnAnim.phase === 'impact' ? '#ef4444' : 'rgba(239,68,68,0.4)',
+                          boxShadow: turnAnim.phase === 'impact' ? '0 0 30px rgba(239,68,68,0.5), 0 8px 25px rgba(0,0,0,0.4)' : '0 0 15px rgba(239,68,68,0.15), 0 8px 25px rgba(0,0,0,0.3)',
+                          borderWidth: '2px',
+                          borderStyle: 'solid'
+                        }} />
+                      <div className="fighter-name text-red-400">{turnAnim.action.targetName}</div>
                     </div>
                   )}
                 </div>

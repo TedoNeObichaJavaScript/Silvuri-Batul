@@ -278,11 +278,11 @@ const SUPPORT_CARDS = [
   {
     id: 'supportkreicho', name: 'Крейчо', title: 'Верният Другар',
     image: '/images/cards/supportkreicho.jpg',
-    description: 'Лекува 3 HP в началото на всеки рунд.',
-    type: 'heal_per_round', value: 3
+    description: 'Лекува 4 HP в началото на всеки рунд.',
+    type: 'heal_per_round', value: 4
   },
   {
-    id: 'supportteodorsdjandaka', name: 'Теодор с Джанката', title: 'Въоръжен до Зъби',
+    id: 'supportteodorsdjandaka', name: 'Теодор с Джандака', title: 'Въоръжен до Зъби',
     image: '/images/cards/supportteodorsdjandaka.jpg',
     description: '+3 ATK завинаги.',
     type: 'permanent_atk', value: 3
@@ -296,8 +296,8 @@ const SUPPORT_CARDS = [
   {
     id: 'supportscarymarin', name: 'Страшният Марин', title: 'Плашещата Аура',
     image: '/images/cards/supportscarymarin.jpg',
-    description: '+2 DEF завинаги.',
-    type: 'permanent_def', value: 2
+    description: '+3 DEF завинаги.',
+    type: 'permanent_def', value: 3
   },
   {
     id: 'supportteodortate', name: 'Теодор Тате', title: 'Връзки по Високите Места',
@@ -308,8 +308,8 @@ const SUPPORT_CARDS = [
   {
     id: 'supportpavlinsrednqka', name: 'Павлин Средняка', title: 'Неубиваемият',
     image: '/images/cards/supportpavlinsrednqka.png',
-    description: '+8 HP бонус (увеличава максималните HP).',
-    type: 'hp_boost', value: 8
+    description: '+15 HP бонус (увеличава максималните HP).',
+    type: 'hp_boost', value: 15
   }
 ];
 

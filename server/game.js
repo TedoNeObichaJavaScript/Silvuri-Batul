@@ -573,7 +573,7 @@ class Game {
       if (alive.length <= 1) { gameOver = true; this.state = 'gameOver'; this.winner = alive.length === 1 ? alive[0] : null; }
       this.battleLog.push(...results);
       return {
-        action: { attackerId: pending.attackerId, attackerName: attacker.name, attackerWarrior: attacker.warrior ? { id: attacker.warrior.id, name: attacker.warrior.name, image: attacker.warrior.image, rarity: attacker.warrior.rarity } : null, targetId: actualTargetPlayer.id, targetName: actualTargetPlayer.name, targetWarrior: actualTargetPlayer.warrior ? { id: actualTargetPlayer.warrior.id, name: actualTargetPlayer.warrior.name, image: actualTargetPlayer.warrior.image, rarity: actualTargetPlayer.warrior.rarity } : null, spell: spell ? { name: spell.name, icon: spell.icon, iconColor: spell.iconColor, type: spell.type } : null, counter: counter ? { name: counter.name, icon: counter.icon, iconColor: counter.iconColor, type: counter.type } : null },
+        action: { attackerId: pending.attackerId, attackerName: attacker.name, attackerWarrior: attacker.warrior ? { id: attacker.warrior.id, name: attacker.warrior.name, image: attacker.warrior.image, rarity: attacker.warrior.rarity } : null, targetId: actualTargetPlayer.id, targetName: actualTargetPlayer.name, targetWarrior: actualTargetPlayer.warrior ? { id: actualTargetPlayer.warrior.id, name: actualTargetPlayer.warrior.name, image: actualTargetPlayer.warrior.image, rarity: actualTargetPlayer.warrior.rarity } : null, spell: spell ? { id: spell.id, name: spell.name, icon: spell.icon, iconColor: spell.iconColor, type: spell.type } : null, counter: counter ? { id: counter.id, name: counter.name, icon: counter.icon, iconColor: counter.iconColor, type: counter.type } : null },
         results, roundComplete, nextTurn: !roundComplete ? this.turnOrder[this.currentTurnIndex] : null, gameOver,
         winner: this.winner ? { id: this.winner.id, name: this.winner.name, hp: this.winner.hp } : null,
         playerStates: this.getPlayerStates()
@@ -583,7 +583,7 @@ class Game {
     // Smoke screen miss check (Сашко с Цигари passive)
     if (actualTargetPlayer.warrior?.ability?.type === 'smoke_screen') {
       if (Math.random() < actualTargetPlayer.warrior.ability.missChance) {
-        results.push({ type: 'miss', playerName: attacker.name, message: `💨 Димна Завеса! ${attacker.name} промахва ${actualTargetPlayer.name}!` });
+        results.push({ type: 'miss', playerName: attacker.name, message: `💨 Димна Завеса! ${attacker.name} промахва ${actualTargetPlayer.name}!`, rollData: { rollType: 'coin', success: true, chance: actualTargetPlayer.warrior.ability.missChance, label: 'Димна Завеса' } });
 
         attacker.buffs.atk = 0;
         if (!actualTargetPlayer.eliminated) actualTargetPlayer.immune = true;
@@ -595,7 +595,7 @@ class Game {
         if (alive.length <= 1) { gameOver = true; this.state = 'gameOver'; this.winner = alive.length === 1 ? alive[0] : null; }
         this.battleLog.push(...results);
         return {
-          action: { attackerId: pending.attackerId, attackerName: attacker.name, attackerWarrior: attacker.warrior ? { id: attacker.warrior.id, name: attacker.warrior.name, image: attacker.warrior.image, rarity: attacker.warrior.rarity } : null, targetId: actualTargetPlayer.id, targetName: actualTargetPlayer.name, targetWarrior: actualTargetPlayer.warrior ? { id: actualTargetPlayer.warrior.id, name: actualTargetPlayer.warrior.name, image: actualTargetPlayer.warrior.image, rarity: actualTargetPlayer.warrior.rarity } : null, spell: spell ? { name: spell.name, icon: spell.icon, iconColor: spell.iconColor, type: spell.type } : null, counter: counter ? { name: counter.name, icon: counter.icon, iconColor: counter.iconColor, type: counter.type } : null },
+          action: { attackerId: pending.attackerId, attackerName: attacker.name, attackerWarrior: attacker.warrior ? { id: attacker.warrior.id, name: attacker.warrior.name, image: attacker.warrior.image, rarity: attacker.warrior.rarity } : null, targetId: actualTargetPlayer.id, targetName: actualTargetPlayer.name, targetWarrior: actualTargetPlayer.warrior ? { id: actualTargetPlayer.warrior.id, name: actualTargetPlayer.warrior.name, image: actualTargetPlayer.warrior.image, rarity: actualTargetPlayer.warrior.rarity } : null, spell: spell ? { id: spell.id, name: spell.name, icon: spell.icon, iconColor: spell.iconColor, type: spell.type } : null, counter: counter ? { id: counter.id, name: counter.name, icon: counter.icon, iconColor: counter.iconColor, type: counter.type } : null },
           results, roundComplete, nextTurn: !roundComplete ? this.turnOrder[this.currentTurnIndex] : null, gameOver,
           winner: this.winner ? { id: this.winner.id, name: this.winner.name, hp: this.winner.hp } : null,
           playerStates: this.getPlayerStates()
@@ -799,10 +799,10 @@ class Game {
         if (Math.random() < ability.hitChance) {
           damage = Math.floor(damage * ability.multiplier);
           target.hp -= damage;
-          results.push({ type: 'attack', playerName: attacker.name, targetName: target.name, damage, message: `🍺 Пиян Размах УДРЯ за ${damage} щети!` });
+          results.push({ type: 'attack', playerName: attacker.name, targetName: target.name, damage, message: `🍺 Пиян Размах УДРЯ за ${damage} щети!`, rollData: { rollType: 'coin', success: true, chance: ability.hitChance, label: ability.name } });
         } else {
           damage = 0;
-          results.push({ type: 'miss', playerName: attacker.name, message: `🍺 Пиян Размах ПРОМАХВА!` });
+          results.push({ type: 'miss', playerName: attacker.name, message: `🍺 Пиян Размах ПРОМАХВА!`, rollData: { rollType: 'coin', success: false, chance: ability.hitChance, label: ability.name } });
         }
         damageHandled = true;
         break;
@@ -841,10 +841,10 @@ class Game {
         if (Math.random() > 0.5) {
           damage += ability.value;
           target.hp -= damage;
-          results.push({ type: 'attack', playerName: attacker.name, targetName: target.name, damage, message: `🎄 БОМБА! ${damage} щети!` });
+          results.push({ type: 'attack', playerName: attacker.name, targetName: target.name, damage, message: `🎄 БОМБА! ${damage} щети!`, rollData: { rollType: 'coin', success: true, chance: 0.5, label: ability.name } });
         } else {
           attacker.hp = Math.min(this.maxHp, attacker.hp + ability.value);
-          results.push({ type: 'heal', message: `🎄 ЛЕЧЕНИЕ! ${attacker.name} +${ability.value} HP!` });
+          results.push({ type: 'heal', message: `🎄 ЛЕЧЕНИЕ! ${attacker.name} +${ability.value} HP!`, rollData: { rollType: 'coin', success: false, chance: 0.5, label: ability.name } });
         }
         damageHandled = true;
         break;
@@ -887,10 +887,10 @@ class Game {
         if (Math.random() < ability.chance) {
           damage *= 2;
           target.hp -= damage;
-          results.push({ type: 'attack', playerName: attacker.name, targetName: target.name, damage, message: `🎰 ПЕЧЕЛИВШ ЗАЛОГ! ${damage} двойни щети!` });
+          results.push({ type: 'attack', playerName: attacker.name, targetName: target.name, damage, message: `🎰 ПЕЧЕЛИВШ ЗАЛОГ! ${damage} двойни щети!`, rollData: { rollType: 'coin', success: true, chance: ability.chance, label: ability.name } });
         } else {
           target.hp = Math.min(this.maxHp, target.hp + damage);
-          results.push({ type: 'heal_enemy', message: `🎰 ЗАГУБЕН ЗАЛОГ! Лекува ${target.name} за ${damage}!` });
+          results.push({ type: 'heal_enemy', message: `🎰 ЗАГУБЕН ЗАЛОГ! Лекува ${target.name} за ${damage}!`, rollData: { rollType: 'coin', success: false, chance: ability.chance, label: ability.name } });
         }
         damageHandled = true;
         break;
@@ -925,15 +925,15 @@ class Game {
         const roll = Math.floor(Math.random() * 6) + 1;
         if (roll === 1) {
           damage = 0;
-          results.push({ type: 'miss', playerName: attacker.name, message: `🎰 Джакпот ролва ${roll} — ПРОМАХ!` });
+          results.push({ type: 'miss', playerName: attacker.name, message: `🎰 Джакпот ролва ${roll} — ПРОМАХ!`, rollData: { rollType: 'dice', value: roll, label: ability.name } });
         } else if (roll <= 3) {
-          results.push({ type: 'ability', message: `🎰 Джакпот ролва ${roll} — нормален удар.` });
+          results.push({ type: 'ability', message: `🎰 Джакпот ролва ${roll} — нормален удар.`, rollData: { rollType: 'dice', value: roll, label: ability.name } });
         } else if (roll <= 5) {
           damage = Math.floor(damage * 1.5);
-          results.push({ type: 'ability', message: `🎰 Джакпот ролва ${roll} — +50% щети!` });
+          results.push({ type: 'ability', message: `🎰 Джакпот ролва ${roll} — +50% щети!`, rollData: { rollType: 'dice', value: roll, label: ability.name } });
         } else {
           damage = damage * 2;
-          results.push({ type: 'ability', message: `🎰 Джакпот ролва 6 — ДВОЙНИ ЩЕТИ!` });
+          results.push({ type: 'ability', message: `🎰 Джакпот ролва 6 — ДВОЙНИ ЩЕТИ!`, rollData: { rollType: 'dice', value: roll, label: ability.name } });
         }
         target.hp -= damage;
         if (damage > 0) {
@@ -957,11 +957,11 @@ class Game {
         if (Math.random() < ability.chance) {
           const selfDmg = Math.floor(damage / 2);
           target.hp -= selfDmg;
-          results.push({ type: 'ability', message: `😻 Чар! ${target.name} удря себе си за ${selfDmg} щети!` });
+          results.push({ type: 'ability', message: `😻 Чар! ${target.name} удря себе си за ${selfDmg} щети!`, rollData: { rollType: 'coin', success: true, chance: ability.chance, label: ability.name } });
           damage = 0;
           damageHandled = true;
         } else {
-          results.push({ type: 'ability', message: `😻 Чарът не подейства!` });
+          results.push({ type: 'ability', message: `😻 Чарът не подейства!`, rollData: { rollType: 'coin', success: false, chance: ability.chance, label: ability.name } });
         }
         break;
 
@@ -1028,9 +1028,9 @@ class Game {
         if (Math.random() < counter.chance) {
           damage = 0;
           dodged = true;
-          results.push({ type: 'counter', playerName: target.name, message: `🌪️ фиууу! ${target.name} избягва атаката!` });
+          results.push({ type: 'counter', playerName: target.name, message: `🌪️ фиууу! ${target.name} избягва атаката!`, rollData: { rollType: 'coin', success: true, chance: counter.chance, label: 'фиууу' } });
         } else {
-          results.push({ type: 'counter', playerName: target.name, message: `🌪️ фиууу... НЕУСПЕШНО!` });
+          results.push({ type: 'counter', playerName: target.name, message: `🌪️ фиууу... НЕУСПЕШНО!`, rollData: { rollType: 'coin', success: false, chance: counter.chance, label: 'фиууу' } });
         }
         break;
 
