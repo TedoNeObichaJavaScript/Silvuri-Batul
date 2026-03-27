@@ -184,19 +184,31 @@ class Game {
     // Skip stunned/frozen players
     this.skipIncapacitated();
 
-    // Owner card: Пролетно Разчистване (every 3 rounds)
+    // Owner card: Пролетно Разчистване (every 2 rounds)
     for (const [, p] of this.players) {
       if (p.eliminated || !p.warrior) continue;
-      if (p.warrior.ability.type === 'owner_admin' && this.round > 1 && this.round % 3 === 0) {
+      if (p.warrior.ability.type === 'owner_admin' && this.round > 1 && this.round % 2 === 0) {
         const springCleaning = p.warrior.ability.effects.find(e => e.type === 'spring_cleaning');
         if (springCleaning) {
+          // Silence all enemies for 1 round
+          const enemies = [];
           for (const [, target] of this.players) {
             if (target.id !== p.id && !target.eliminated) {
               target.silenced = Math.max(target.silenced, springCleaning.silenceDuration);
+              enemies.push(target);
             }
           }
+          // Stun 2 random enemies for 1 round
+          const shuffled = enemies.sort(() => Math.random() - 0.5);
+          const stunTargets = shuffled.slice(0, springCleaning.stunCount);
+          const stunnedNames = [];
+          for (const target of stunTargets) {
+            target.stunned = Math.max(target.stunned || 0, springCleaning.stunDuration);
+            stunnedNames.push(target.name);
+          }
+          // Self ATK reduction as cost
           p.atkReduction = { multiplier: springCleaning.atkReduction, rounds: springCleaning.silenceDuration };
-          this.battleLog.push({ type: 'ability', playerName: p.name, message: `🔨 Пролетно Разчистване: ${p.name} заглушава ВСИЧКИ за ${springCleaning.silenceDuration} рунда! (50% ATK)` });
+          this.battleLog.push({ type: 'ability', playerName: p.name, message: `🔨 Пролетно Разчистване: ${p.name} заглушава ВСИЧКИ за ${springCleaning.silenceDuration} рунд и зашеметява ${stunnedNames.join(', ')}! (50% ATK)` });
         }
       }
     }

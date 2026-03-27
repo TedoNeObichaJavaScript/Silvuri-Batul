@@ -13,13 +13,13 @@ const RARITY_COLORS = {
 };
 
 const RARITY_NAMES = {
-  common: 'Обикновена',
-  rare: 'Рядка',
-  epic: 'Епична',
-  legendary: 'Легендарна',
-  secret: 'Тайна',
-  cosmic: 'Космическа',
-  owner: 'Собственик'
+  common: 'Common',
+  rare: 'Rare',
+  epic: 'Epic',
+  legendary: 'Legendary',
+  secret: 'Secret',
+  cosmic: 'Cosmic',
+  owner: 'Owner'
 };
 
 // Styled icon component — renders custom SVG inside a colored glowing container

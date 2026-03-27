@@ -158,12 +158,12 @@ const WARRIORS = [
 
   // ===== COSMIC (1) — ~2% chance, 3 effects =====
   {
-    id: 'sashkoebit', name: 'Сашко Елементалът', title: 'Космическият Страж',
+    id: 'sashkoebit', name: 'Сашко Битият', title: 'Оцелелият от Баща Му',
     image: '/images/cards/sashkoebit.png', rarity: 'cosmic',
     atk: 7, def: 6,
     ability: {
-      name: 'Космическа Троица',
-      description: 'Краде 3 HP | Щит -3 щети | Всеки 2 рунда: 3 AoE.',
+      name: 'Уличен Закон',
+      description: 'Краде 3 HP | Издържа -3 щети | На всеки 2 рунда: 3 по всички.',
       type: 'cosmic_triple',
       effects: [
         { type: 'drain', value: 3 },
@@ -180,12 +180,12 @@ const WARRIORS = [
     atk: 6, def: 5,
     ability: {
       name: 'Администратор',
-      description: 'Passive: Banhammer +2/+2 per kill | Timeout: Silence +3 DMG | Пролетно Разчистване',
+      description: 'Passive: Banhammer +2/+2 per kill | Timeout: Silence +3 DMG | Пролетно Разчистване: на 2 рунда silence всички + стън на 2ма',
       type: 'owner_admin',
       effects: [
         { type: 'banhammer', atkPerKill: 2, defPerKill: 2 },
         { type: 'timeout', silenceDuration: 1, bonusDmg: 3 },
-        { type: 'spring_cleaning', silenceDuration: 2, atkReduction: 0.5, interval: 3 }
+        { type: 'spring_cleaning', silenceDuration: 1, stunCount: 2, stunDuration: 1, atkReduction: 0.5, interval: 2 }
       ]
     }
   }
@@ -227,13 +227,13 @@ const RARITY_COLORS = {
 };
 
 const RARITY_NAMES = {
-  common: 'Обикновена',
-  rare: 'Рядка',
-  epic: 'Епична',
-  legendary: 'Легендарна',
-  secret: 'Тайна',
-  cosmic: 'Космическа',
-  owner: 'Собственик'
+  common: 'Common',
+  rare: 'Rare',
+  epic: 'Epic',
+  legendary: 'Legendary',
+  secret: 'Secret',
+  cosmic: 'Cosmic',
+  owner: 'Owner'
 };
 
 // Rarity weights for draft appearance
