@@ -2,7 +2,7 @@
 // Warriors (25), Spell Cards (11), Counter Cards (6)
 
 const WARRIORS = [
-  // ===== COMMON (7) =====
+  // ===== COMMON (8) =====
   {
     id: 'marinimabuzkut', name: 'Марин има Бъзкът', title: 'Фризьорският Майстор',
     image: '/images/cards/marinimabuzkut.png', rarity: 'common',
@@ -44,12 +44,6 @@ const WARRIORS = [
     image: '/images/cards/vikislusha.png', rarity: 'common',
     atk: 4, def: 7,
     ability: { name: 'Подслушване', description: 'Краде 1 случайна контра от противника.', type: 'counter_steal' }
-  },
-  {
-    id: 'muaythaya', name: 'Муай Тай', title: 'Уличният Боец',
-    image: '/images/cards/muaythaya.jpg', rarity: 'common',
-    atk: 7, def: 4,
-    ability: { name: 'Коляно', description: '+3 бонус щети и 30% шанс за стън.', type: 'knee_strike', bonusDmg: 3, stunChance: 0.3 }
   },
   {
     id: 'pavlinsublaznitelniq', name: 'Павлин Съблазнителния', title: 'Чарът на Магазина',
@@ -152,7 +146,13 @@ const WARRIORS = [
     ability: { name: 'Точен Изстрел', description: 'Игнорира 100% от DEF на целта.', type: 'sniper' }
   },
 
-  // ===== LEGENDARY (4) =====
+  // ===== LEGENDARY (5) =====
+  {
+    id: 'muaythaya', name: 'Муай Тай', title: 'Уличният Боец',
+    image: '/images/cards/muaythaya.jpg', rarity: 'legendary',
+    atk: 8, def: 5,
+    ability: { name: 'Осем Крайника', description: 'Удря 3 пъти по 50% щети. Всеки удар: 30% стън. -2 DEF на целта завинаги.', type: 'eight_limbs', hits: 3, hitMultiplier: 0.5, stunChance: 0.3, defShred: 2 }
+  },
   {
     id: 'bezkuchki', name: 'Без Кучки', title: 'Тихият Хакер',
     image: '/images/cards/bezkuchki.png', rarity: 'legendary',
@@ -172,7 +172,7 @@ const WARRIORS = [
     ability: { name: 'Тейкдаун', description: 'Зашеметява целта и нанася +2 бонус щети.', type: 'takedown', bonusDmg: 2 }
   },
   {
-    id: 'vulkutotkarnobatstreet', name: 'Вулкът от Карнобат Стрийт', title: 'Уолстрийт Измамникът',
+    id: 'vulkutotkarnobatstreet', name: 'Вълкът от Карнобат Стрийт', title: 'Уолстрийт Измамникът',
     image: '/images/cards/vulkutotkarnobatstreet.jpg', rarity: 'legendary',
     atk: 5, def: 6,
     ability: { name: 'Схемата', description: 'Краде 1 spell от целта и +3 бонус щети.', type: 'scheme', bonusDmg: 3 }
