@@ -92,7 +92,7 @@ const WARRIORS = [
 
   // ===== EPIC (6) =====
   {
-    id: 'antoniopashata', name: 'Антонио Пашата', title: 'Огледалният Воин',
+    id: 'antoniopashata', name: 'Антонио Пашата', title: 'Огледалният Силвър',
     image: '/images/cards/antoniopashata.png', rarity: 'epic',
     atk: 7, def: 5,
     ability: { name: 'Огледален Удар', description: 'Връща 50% от получените щети.', type: 'reflect', value: 0.5 }
@@ -139,7 +139,7 @@ const WARRIORS = [
     id: 'calofdutigrost', name: 'Call of Duty Грост', title: 'Призракът Снайперист',
     image: '/images/cards/calofdutigrost.png', rarity: 'legendary',
     atk: 9, def: 2,
-    ability: { name: '360 No Scope', description: 'Най-висока инициатива = тройни щети.', type: 'speed_kill', multiplier: 3 }
+    ability: { name: '360 No Scope', description: 'Най-висока инициатива = двойни щети.', type: 'speed_kill', multiplier: 2 }
   },
 
   // ===== SECRET (2) — ~5% chance to appear in draft =====
@@ -177,7 +177,7 @@ const WARRIORS = [
   {
     id: 'teodorglavata', name: 'Теодор Главата', title: 'Собственикът на Сървъра',
     image: '/images/cards/teodorglavata.jpg', rarity: 'owner',
-    atk: 8, def: 7,
+    atk: 6, def: 5,
     ability: {
       name: 'Администратор',
       description: 'Passive: Banhammer +2/+2 per kill | Timeout: Silence +3 DMG | Пролетно Разчистване',
@@ -193,27 +193,27 @@ const WARRIORS = [
 
 // ===== SPELL CARDS (11) =====
 const SPELLS = [
-  { id: 'mahlenska_baltia', name: 'Махленска Балтия', description: '+6 ATK за тази атака.', type: 'atk_boost', value: 6, icon: '🪓', iconColor: '#ff4444' },
-  { id: 'akcia_respekt', name: 'Акция респект', description: '+6 DEF за този рунд.', type: 'def_boost', value: 6, icon: '🫡', iconColor: '#4488ff' },
-  { id: 'kradeca_na_dushi', name: 'Крадеца на души', description: 'Лекува 8 HP.', type: 'heal', value: 8, icon: '👁️‍🗨️', iconColor: '#aa44ff' },
-  { id: 'umirajte_vsichki', name: 'Умирайте всички', description: '4 щети на ВСИЧКИ врагове.', type: 'aoe_damage', value: 4, chain: true, icon: '☢️', iconColor: '#ff8800' },
-  { id: 'lqv_desen', name: 'ляв десен', description: 'Атаката удря два пъти.', type: 'double_hit', icon: '🤜', iconColor: '#ff6622' },
-  { id: 'na_muro_vodata', name: 'на мъро водата', description: '3 отрова за 2 рунда.', type: 'poison', value: 3, duration: 2, icon: '🧪', iconColor: '#44cc66' },
-  { id: 'stop_igra', name: 'стоп игра', description: 'Замразява целта + 1 случаен враг.', type: 'freeze_chain', chain: true, icon: '✋', iconColor: '#22ccbb' },
-  { id: 'edno_za_edno', name: 'едно за едно', description: '-5 HP, +10 ATK.', type: 'sacrifice', hpCost: 5, atkBonus: 10, icon: '⚖️', iconColor: '#8844cc' },
-  { id: 'bum', name: 'бум', description: '50% шанс стън на всеки враг.', type: 'mass_stun', chance: 0.5, chain: true, icon: '🧨', iconColor: '#cc2222' },
-  { id: 'igrata_na_dyavola', name: 'играта на дявола', description: 'Цел под 50% HP: +8 щети.', type: 'execute', threshold: 0.5, bonusDmg: 8, icon: '🎴', iconColor: '#6677aa' },
-  { id: 'pepel_ot_rozi', name: 'пепел от рози', description: 'Пренасочва щетите към случаен враг.', type: 'redirect', icon: '🥀', iconColor: '#cc4466' }
+  { id: 'mahlenska_baltia', name: 'Махленска Балтия', description: '+6 ATK за тази атака.', type: 'atk_boost', value: 6, iconColor: '#ff4444' },
+  { id: 'akcia_respekt', name: 'Акция респект', description: '+6 DEF за този рунд.', type: 'def_boost', value: 6, iconColor: '#4488ff' },
+  { id: 'kradeca_na_dushi', name: 'Крадеца на души', description: 'Лекува 8 HP.', type: 'heal', value: 8, iconColor: '#aa44ff' },
+  { id: 'umirajte_vsichki', name: 'Умирайте всички', description: '4 щети на ВСИЧКИ врагове.', type: 'aoe_damage', value: 4, chain: true, iconColor: '#ff8800' },
+  { id: 'lqv_desen', name: 'ляв десен', description: 'Атаката удря два пъти.', type: 'double_hit', iconColor: '#ff6622' },
+  { id: 'na_muro_vodata', name: 'на мъро водата', description: '3 отрова за 2 рунда.', type: 'poison', value: 3, duration: 2, iconColor: '#44cc66' },
+  { id: 'stop_igra', name: 'стоп игра', description: 'Замразява целта + 1 случаен враг.', type: 'freeze_chain', chain: true, iconColor: '#22ccbb' },
+  { id: 'edno_za_edno', name: 'едно за едно', description: '-5 HP, +10 ATK.', type: 'sacrifice', hpCost: 5, atkBonus: 10, iconColor: '#8844cc' },
+  { id: 'bum', name: 'бум', description: '50% шанс стън на всеки враг.', type: 'mass_stun', chance: 0.5, chain: true, iconColor: '#cc2222' },
+  { id: 'igrata_na_dyavola', name: 'играта на дявола', description: 'Цел под 50% HP: +8 щети.', type: 'execute', threshold: 0.5, bonusDmg: 8, iconColor: '#6677aa' },
+  { id: 'pepel_ot_rozi', name: 'пепел от рози', description: 'Пренасочва щетите към случаен враг.', type: 'redirect', iconColor: '#cc4466' }
 ];
 
 // ===== COUNTER CARDS (6) =====
 const COUNTERS = [
-  { id: 'poemaj', name: 'поемай', description: 'Отразява 75% щети обратно.', type: 'reflect', value: 0.75, icon: '🪃', iconColor: '#00bcd4' },
-  { id: 'fiuuu', name: 'фиууу', description: '80% шанс за пълен dodge.', type: 'dodge', chance: 0.8, icon: '🌪️', iconColor: '#b0bec5' },
-  { id: 'nyama_takiva', name: 'няма такива', description: 'Анулира spell-а на атакуващия.', type: 'spell_negate', icon: '✖️', iconColor: '#ff3333' },
-  { id: 'pocherpka', name: 'почерпка', description: 'Превръща до 10 щети в HP.', type: 'absorb', maxAbsorb: 10, icon: '🍺', iconColor: '#4caf50' },
-  { id: 'vsichko_se_vrushta', name: 'всичко се връща', description: 'Получаваш щети, но връщаш двойно.', type: 'vengeance', multiplier: 2, icon: '🔄', iconColor: '#9c27b0' },
-  { id: 'edin_za_vsichki', name: 'един за всички', description: 'При 5+ щети: 5 на всички врагове.', type: 'chain_react', threshold: 5, damage: 5, chain: true, icon: '⚡', iconColor: '#ff9800' }
+  { id: 'poemaj', name: 'поемай', description: 'Отразява 75% щети обратно.', type: 'reflect', value: 0.75, iconColor: '#00bcd4' },
+  { id: 'fiuuu', name: 'фиууу', description: '80% шанс за пълен dodge.', type: 'dodge', chance: 0.8, iconColor: '#b0bec5' },
+  { id: 'nyama_takiva', name: 'няма такива', description: 'Анулира spell-а на атакуващия.', type: 'spell_negate', iconColor: '#ff3333' },
+  { id: 'pocherpka', name: 'почерпка', description: 'Превръща до 10 щети в HP.', type: 'absorb', maxAbsorb: 10, iconColor: '#4caf50' },
+  { id: 'vsichko_se_vrushta', name: 'всичко се връща', description: 'Получаваш щети, но връщаш двойно (макс 15).', type: 'vengeance', multiplier: 2, maxReturn: 15, iconColor: '#9c27b0' },
+  { id: 'edin_za_vsichki', name: 'един за всички', description: 'При 5+ щети: 5 на всички врагове.', type: 'chain_react', threshold: 5, damage: 5, chain: true, iconColor: '#ff9800' }
 ];
 
 const RARITY_COLORS = {
