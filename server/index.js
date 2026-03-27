@@ -30,8 +30,10 @@ if (process.env.NODE_ENV === 'production') {
 const games = new Map();
 const socketToGame = new Map();
 const actionTimestamps = new Map();
+const disconnectedPlayers = new Map(); // key: `${lobbyCode}:${playerName}` → { oldSocketId, timestamp }
 const RATE_LIMIT_MS = 500;
 const COUNTER_TIMEOUT_MS = 10000;
+const TURN_TIMEOUT_MS = 30000;
 
 // Input sanitization
 function sanitizeName(name) {
@@ -51,6 +53,52 @@ setInterval(() => {
   }
 }, 5 * 60 * 1000);
 
+// Helper: start turn timer — auto-skip if player doesn't act in 30s
+function startTurnTimer(code, game) {
+  clearTurnTimer(game);
+  const currentTurnId = game.turnOrder[game.currentTurnIndex];
+  if (!currentTurnId) return;
+
+  game.turnTimeoutId = setTimeout(() => {
+    if (game.state !== 'battle' || game.pendingAttack) return;
+    const player = game.players.get(currentTurnId);
+    if (!player || player.eliminated) return;
+
+    // Auto-skip: pick a random valid target and attack with no spell
+    const targets = game.getAlivePlayers().filter(p => p.id !== currentTurnId && !p.immune);
+    const validTargets = targets.length > 0 ? targets : game.getAlivePlayers().filter(p => p.id !== currentTurnId);
+    if (validTargets.length === 0) return;
+
+    const randomTarget = validTargets[Math.floor(Math.random() * validTargets.length)];
+    const result = game.submitTurn(currentTurnId, randomTarget.id, null);
+    if (result.error) return;
+
+    io.to(code).emit('turn_timeout', { playerId: currentTurnId, playerName: player.name });
+
+    if (result.waitingForCounter) {
+      const defenderPrivate = game.getPlayerPrivateState(result.targetId);
+      io.to(result.targetId).emit('counter_prompt', {
+        attackerName: result.attackerName, attackerWarrior: result.attackerWarrior,
+        spellUsed: result.spellUsed, counters: defenderPrivate ? defenderPrivate.counters : [],
+        timeLimit: COUNTER_TIMEOUT_MS / 1000
+      });
+      io.to(code).emit('waiting_for_counter', { attackerName: result.attackerName, targetId: result.targetId });
+      game.counterTimeoutId = setTimeout(() => {
+        if (game.pendingAttack) {
+          const resolveResult = game.resolveTurn(null);
+          if (!resolveResult.error) broadcastTurnResult(code, game, resolveResult);
+        }
+      }, COUNTER_TIMEOUT_MS);
+    } else {
+      broadcastTurnResult(code, game, result);
+    }
+  }, TURN_TIMEOUT_MS);
+}
+
+function clearTurnTimer(game) {
+  if (game.turnTimeoutId) { clearTimeout(game.turnTimeoutId); game.turnTimeoutId = null; }
+}
+
 // Helper: broadcast turn result and handle round/game transitions
 function broadcastTurnResult(code, game, result) {
   io.to(code).emit('turn_result', {
@@ -69,16 +117,27 @@ function broadcastTurnResult(code, game, result) {
   }
 
   if (result.gameOver) {
+    clearTurnTimer(game);
     io.to(code).emit('game_over', { winner: result.winner, playerStates: result.playerStates });
   } else if (result.roundComplete) {
+    clearTurnTimer(game);
     // Start next round after delay
     setTimeout(() => {
       const roundData = game.startRound();
-      io.to(code).emit('round_start', roundData);
-      for (const [playerId] of game.players) {
-        io.to(playerId).emit('private_state', game.getPlayerPrivateState(playerId));
+      if (roundData.gameOver) {
+        io.to(code).emit('round_start', roundData);
+        io.to(code).emit('game_over', { winner: roundData.winner, playerStates: roundData.playerStates });
+      } else {
+        io.to(code).emit('round_start', roundData);
+        for (const [playerId] of game.players) {
+          io.to(playerId).emit('private_state', game.getPlayerPrivateState(playerId));
+        }
+        startTurnTimer(code, game);
       }
     }, 3000);
+  } else {
+    // Next turn — start timer
+    startTurnTimer(code, game);
   }
 }
 
@@ -182,9 +241,14 @@ io.on('connection', (socket) => {
         });
         io.to(code).emit('round_start', roundData);
 
-        // Send private states
-        for (const [playerId] of game.players) {
-          io.to(playerId).emit('private_state', game.getPlayerPrivateState(playerId));
+        if (roundData.gameOver) {
+          io.to(code).emit('game_over', { winner: roundData.winner, playerStates: roundData.playerStates });
+        } else {
+          // Send private states
+          for (const [playerId] of game.players) {
+            io.to(playerId).emit('private_state', game.getPlayerPrivateState(playerId));
+          }
+          startTurnTimer(code, game);
         }
       }, 2000);
     } else {
@@ -216,6 +280,7 @@ io.on('connection', (socket) => {
       return callback({ error: 'Невалидна цел!' });
     }
 
+    clearTurnTimer(game);
     const result = game.submitTurn(socket.id, targetId, spellUid || null);
     if (result.error) return callback({ error: result.error });
 
@@ -302,36 +367,116 @@ io.on('connection', (socket) => {
     const game = games.get(code);
     if (!game) return;
 
+    const player = game.players.get(socket.id);
+
     // Handle pending attack if this player is involved
     if (game.pendingAttack) {
       if (game.pendingAttack.attackerId === socket.id) {
-        // Attacker disconnected — cancel pending attack
         game.pendingAttack = null;
-        if (game.counterTimeoutId) {
-          clearTimeout(game.counterTimeoutId);
-          game.counterTimeoutId = null;
-        }
+        if (game.counterTimeoutId) { clearTimeout(game.counterTimeoutId); game.counterTimeoutId = null; }
       } else if (game.pendingAttack.targetId === socket.id) {
-        // Defender disconnected — resolve with no counter
-        if (game.counterTimeoutId) {
-          clearTimeout(game.counterTimeoutId);
-          game.counterTimeoutId = null;
-        }
+        if (game.counterTimeoutId) { clearTimeout(game.counterTimeoutId); game.counterTimeoutId = null; }
         const result = game.resolveTurn(null);
-        if (!result.error) {
-          broadcastTurnResult(code, game, result);
-        }
+        if (!result.error) broadcastTurnResult(code, game, result);
       }
     }
 
-    game.removePlayer(socket.id);
-    socketToGame.delete(socket.id);
-    actionTimestamps.delete(socket.id);
+    // If game is in progress, allow reconnection instead of removing
+    if (game.state !== 'lobby' && player) {
+      const reconnectKey = `${code}:${player.name}`;
+      disconnectedPlayers.set(reconnectKey, { oldSocketId: socket.id, timestamp: Date.now() });
+      // Don't remove from game — mark as temporarily disconnected
+      socketToGame.delete(socket.id);
+      io.to(code).emit('player_disconnected', { playerId: socket.id, playerName: player.name });
 
-    if (game.players.size === 0) { games.delete(code); return; }
-    if (game.hostId === socket.id) game.hostId = [...game.players.keys()][0];
+      // Auto-eliminate after 60s if not reconnected
+      setTimeout(() => {
+        if (disconnectedPlayers.has(reconnectKey)) {
+          disconnectedPlayers.delete(reconnectKey);
+          game.removePlayer(socket.id);
+          if (game.players.size === 0) { games.delete(code); return; }
+          if (game.hostId === socket.id) game.hostId = [...game.players.keys()][0];
+          io.to(code).emit('player_left', { playerId: socket.id, players: getPlayerList(game), hostId: game.hostId });
+        }
+      }, 60000);
+    } else {
+      game.removePlayer(socket.id);
+      socketToGame.delete(socket.id);
+      actionTimestamps.delete(socket.id);
 
-    io.to(code).emit('player_left', { playerId: socket.id, players: getPlayerList(game), hostId: game.hostId });
+      if (game.players.size === 0) { games.delete(code); return; }
+      if (game.hostId === socket.id) game.hostId = [...game.players.keys()][0];
+
+      io.to(code).emit('player_left', { playerId: socket.id, players: getPlayerList(game), hostId: game.hostId });
+    }
+  });
+
+  // Emote
+  socket.on('send_emote', ({ emoteId }) => {
+    const code = socketToGame.get(socket.id);
+    const game = games.get(code);
+    if (!game) return;
+    const player = game.players.get(socket.id);
+    if (!player) return;
+    const validEmotes = ['gg', 'haha', 'kontra', 'wp', 'bravo', 'gg_ez', 'oops', 'rage'];
+    if (!validEmotes.includes(emoteId)) return;
+    socket.to(code).emit('player_emote', { playerId: socket.id, playerName: player.name, emoteId });
+  });
+
+  // Reconnect
+  socket.on('reconnect_game', ({ lobbyCode, playerName }, callback) => {
+    if (typeof callback !== 'function') return;
+    const name = sanitizeName(playerName);
+    const code = sanitizeCode(lobbyCode);
+    const reconnectKey = `${code}:${name}`;
+
+    if (!disconnectedPlayers.has(reconnectKey)) {
+      return callback({ error: 'Няма активна сесия за свързване!' });
+    }
+
+    const game = games.get(code);
+    if (!game) return callback({ error: 'Играта не е намерена!' });
+
+    const { oldSocketId } = disconnectedPlayers.get(reconnectKey);
+    disconnectedPlayers.delete(reconnectKey);
+
+    // Transfer player data from old socket to new socket
+    const playerData = game.players.get(oldSocketId);
+    if (!playerData) return callback({ error: 'Играчът не е намерен!' });
+
+    game.players.delete(oldSocketId);
+    playerData.id = socket.id;
+    game.players.set(socket.id, playerData);
+
+    // Update host if needed
+    if (game.hostId === oldSocketId) game.hostId = socket.id;
+
+    // Update turn order references
+    game.turnOrder = game.turnOrder.map(id => id === oldSocketId ? socket.id : id);
+    game.initiative = game.initiative.map(i => i.id === oldSocketId ? { ...i, id: socket.id } : i);
+    game.draftOrder = game.draftOrder.map(id => id === oldSocketId ? socket.id : id);
+
+    socketToGame.set(socket.id, code);
+    socket.join(code);
+
+    // Send full game state to reconnected player
+    const priv = game.getPlayerPrivateState(socket.id);
+    callback({
+      success: true,
+      state: game.state,
+      playerId: socket.id,
+      lobbyCode: code,
+      playerStates: game.getPlayerStates(),
+      round: game.round,
+      initiative: game.initiative,
+      currentTurn: game.turnOrder[game.currentTurnIndex] || null,
+      spells: priv?.spells || [],
+      counters: priv?.counters || [],
+      battleLog: game.battleLog
+    });
+
+    io.to(code).emit('player_reconnected', { oldId: oldSocketId, newId: socket.id, playerName: name });
+    console.log(`Играч реконектнат: ${name} (${oldSocketId} → ${socket.id})`);
   });
 });
 
