@@ -224,8 +224,8 @@
   .table-seat {
     @apply absolute flex flex-col items-center cursor-pointer;
     top: 50%; left: 50%;
-    margin-top: -45px; margin-left: -45px;
-    width: 90px;
+    margin-top: -50px; margin-left: -50px;
+    width: 100px;
     transform: rotate(var(--angle)) translateY(min(-24vh, -200px)) rotate(calc(-1 * var(--angle)));
     transition: filter 0.3s;
   }
@@ -245,7 +245,7 @@
   }
 
   .seat-avatar {
-    @apply w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-lg border-2 transition-all overflow-hidden relative;
+    @apply w-14 h-14 rounded-full flex items-center justify-center text-white font-bold text-lg border-2 transition-all overflow-hidden relative;
     background: linear-gradient(135deg, #1a2236, #243049);
     border-color: rgba(148, 163, 184, 0.3);
   }
@@ -374,7 +374,7 @@
     @apply bg-dark-800/80 border border-steel-600/20 rounded-xl p-2 overflow-y-auto backdrop-blur-sm;
   }
   .log-entry {
-    @apply flex items-start gap-1 py-1 px-1.5 text-[10px] rounded animate-slide-up;
+    @apply flex items-start gap-1 py-1 px-1.5 text-[11px] rounded animate-slide-up;
   }
   .log-entry.log-attack { @apply text-red-300; }
   .log-entry.log-heal { @apply text-green-300; }

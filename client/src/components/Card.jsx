@@ -75,8 +75,8 @@ const Card = memo(function Card({ card, onClick, selected, disabled, small }) {
       </div>
 
       <div className="px-2 py-1 text-center">
-        <h3 className="text-sm font-bold truncate" style={{ color: rc }}>{card.name}</h3>
-        <p className="text-[10px] text-steel-400 italic truncate">{card.title}</p>
+        <h3 className="text-sm font-bold leading-tight" style={{ color: rc }}>{card.name}</h3>
+        <p className="text-[10px] text-steel-400 italic leading-tight">{card.title}</p>
       </div>
 
       <div className="card-stats-row">

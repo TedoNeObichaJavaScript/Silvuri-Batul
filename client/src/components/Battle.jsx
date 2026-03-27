@@ -207,11 +207,11 @@ export default function Battle({
       <div className="flex-1 min-h-0 flex">
 
         {/* LEFT: My Warrior Card (large screens) */}
-        <div className="hidden lg:flex w-48 shrink-0 flex-col items-center justify-center p-3 border-r border-steel-600/10 bg-dark-900/40">
+        <div className="hidden lg:flex w-64 shrink-0 flex-col items-center justify-center p-3 border-r border-steel-600/10 bg-dark-900/40">
           {myState?.warrior && (
             <>
-              <Card card={myState.warrior} small />
-              <div className="mt-3 w-36">
+              <Card card={myState.warrior} />
+              <div className="mt-3 w-48">
                 <div className="hp-bar">
                   <div className="hp-bar-fill" style={{ width: `${myHpPct}%`, backgroundColor: myHpColor }} />
                   <div className="hp-bar-text">{myState.hp}/{myState.maxHp}</div>
@@ -279,7 +279,7 @@ export default function Battle({
                     )}
                   </div>
 
-                  <div className={`text-[9px] font-bold mt-0.5 truncate max-w-[80px] text-center ${
+                  <div className={`text-[10px] font-bold mt-0.5 truncate max-w-[90px] text-center ${
                     isMe ? 'text-accent-blue' : isTurn ? 'text-white' : 'text-steel-400'
                   }`}>
                     {p.name} {isMe && '(ти)'}
@@ -434,17 +434,17 @@ export default function Battle({
         </div>
 
         {/* RIGHT: Initiative + Battle Log */}
-        <div className="w-64 shrink-0 flex flex-col gap-2 p-2 border-l border-steel-600/10 min-h-0 bg-dark-900/40">
+        <div className="w-72 shrink-0 flex flex-col gap-2 p-2 border-l border-steel-600/10 min-h-0 bg-dark-900/40">
           {initiative.length > 0 && (
             <div className="bg-dark-800 border border-steel-600/20 rounded-xl p-2 shrink-0">
-              <h3 className="text-[10px] text-steel-400 uppercase tracking-wider mb-1">Инициатива</h3>
+              <h3 className="text-xs text-steel-400 uppercase tracking-wider mb-1 font-bold">Инициатива</h3>
               <div className="space-y-0.5">
                 {initiative.map((init, idx) => (
-                  <div key={init.id} className={`flex justify-between text-[11px] px-2 py-0.5 rounded transition-colors ${
+                  <div key={init.id} className={`flex justify-between text-xs px-2 py-0.5 rounded transition-colors ${
                     currentTurn === init.id ? 'bg-accent-blue/10 text-accent-blue font-bold' : 'text-steel-400'
                   }`}>
                     <span>#{idx + 1} {init.name}</span>
-                    <span className="font-pixel text-[10px]">🎲{init.roll}</span>
+                    <span className="font-pixel text-[11px]">🎲{init.roll}</span>
                   </div>
                 ))}
               </div>
@@ -452,12 +452,12 @@ export default function Battle({
           )}
 
           <div className="battle-log flex-1 min-h-0" ref={logRef}>
-            <h3 className="text-[10px] text-steel-400 uppercase tracking-wider mb-1 sticky top-0 bg-dark-800/95 backdrop-blur-sm z-10 pb-1">
+            <h3 className="text-xs text-steel-400 uppercase tracking-wider mb-1 sticky top-0 bg-dark-800/95 backdrop-blur-sm z-10 pb-1 font-bold">
               Бойен Лог
             </h3>
             {battleLog.slice(-30).map((entry, i) => (
               <div key={i} className={`log-entry log-${entry.type}`}>
-                <span className="text-[10px]">{entry.message}</span>
+                <span className="text-[11px]">{entry.message}</span>
               </div>
             ))}
           </div>
