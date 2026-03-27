@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import socket from './socket';
 import Lobby from './components/Lobby';
 import Draft from './components/Draft';
+import SupportDraft from './components/SupportDraft';
 import Battle from './components/Battle';
 import GameOver from './components/GameOver';
 
@@ -20,6 +21,10 @@ export default function App() {
   const [currentPicker, setCurrentPicker] = useState(null);
   const [draftOptions, setDraftOptions] = useState([]);
   const [lastDraftPick, setLastDraftPick] = useState(null);
+
+  // Support draft state
+  const [supportCards, setSupportCards] = useState([]);
+  const [supportPicks, setSupportPicks] = useState({});
 
   // Battle state
   const [playerStates, setPlayerStates] = useState({});
@@ -88,6 +93,18 @@ export default function App() {
       }
     });
 
+    // Support draft events
+    socket.on('support_draft_start', ({ supportCards: cards }) => {
+      setSupportCards(cards);
+      setSupportPicks({});
+      setPhase('support_draft');
+    });
+
+    socket.on('support_picked', ({ pickedBy, pickedByName, supportCard, allPicked }) => {
+      setSupportPicks(prev => ({ ...prev, [pickedBy]: { name: pickedByName, card: supportCard } }));
+      setBattleLog(prev => [...prev, { type: 'initiative', message: `${pickedByName} избира саппорт: ${supportCard.name}!` }]);
+    });
+
     // Battle events
     socket.on('cards_dealt', ({ spells: s, counters: c }) => {
       setSpells(s);
@@ -105,7 +122,8 @@ export default function App() {
       setBattleLog(prev => [...prev, { type: 'stunned', message: `⏱️ ${pname} не действа навреме — автоматична атака!` }]);
     });
 
-    socket.on('round_start', ({ round: r, initiative: init, turnOrder, currentTurn: ct, battleLog: log, playerStates: ps }) => {
+    socket.on('round_start', ({ round: r, initiative: init, turnOrder, currentTurn: ct, battleLog: log, playerStates: ps, gameOver }) => {
+      if (gameOver) return; // Game ended (e.g. poison death) — game_over event handles it
       setRound(r);
       setInitiative(init);
       setCurrentTurn(ct);
@@ -115,9 +133,14 @@ export default function App() {
       if (log && log.length > 0) {
         setBattleLog(prev => [...prev, ...log.map(l => l)]);
       }
-      // Initiative log (no SPD, just dice roll)
-      const initLog = init.map(i => `${i.name}: 🎲${i.roll}`).join(' | ');
-      setBattleLog(prev => [...prev, { type: 'initiative', message: `Рунд ${r} Инициатива: ${initLog}` }]);
+      // Initiative log: show rolls for round 1, show order for cycling rounds
+      if (init.length > 0 && init[0].roll !== null) {
+        const initLog = init.map(i => `${i.name}: 🎲${i.roll}`).join(' | ');
+        setBattleLog(prev => [...prev, { type: 'initiative', message: `Рунд ${r} Инициатива: ${initLog}` }]);
+      } else {
+        const orderLog = init.map(i => i.name).join(' → ');
+        setBattleLog(prev => [...prev, { type: 'initiative', message: `Рунд ${r}: ${orderLog}` }]);
+      }
     });
 
     socket.on('turn_result', ({ action, results, playerStates: ps, nextTurn, roundComplete: rc, gameOver, winner: w }) => {
@@ -176,6 +199,8 @@ export default function App() {
         setRound(0);
         setDraftOptions([]);
         setCounterPrompt(null);
+        setSupportCards([]);
+        setSupportPicks({});
         sessionStorage.removeItem('sb_lobbyCode');
         sessionStorage.removeItem('sb_playerName');
       }
@@ -183,6 +208,7 @@ export default function App() {
 
     return () => {
       ['connect','player_joined','player_left','game_started','draft_options','warrior_picked',
+       'support_draft_start','support_picked',
        'cards_dealt','battle_start','round_start','turn_result','private_state','game_over',
        'phase_change','counter_prompt','waiting_for_counter','turn_timeout',
        'player_disconnected','player_reconnected']
@@ -247,6 +273,10 @@ export default function App() {
           <Draft socket={socket} playerId={playerId} draftRolls={draftRolls} draftOrder={draftOrder}
             currentPicker={currentPicker} setCurrentPicker={setCurrentPicker}
             draftOptions={draftOptions} battleLog={battleLog} lastDraftPick={lastDraftPick} onError={showError} />
+        )}
+        {phase === 'support_draft' && (
+          <SupportDraft socket={socket} playerId={playerId} supportCards={supportCards}
+            supportPicks={supportPicks} battleLog={battleLog} onError={showError} />
         )}
         {phase === 'battle' && (
           <Battle socket={socket} playerId={playerId} playerStates={playerStates}
