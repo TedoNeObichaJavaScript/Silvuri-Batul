@@ -58,7 +58,7 @@ const WARRIORS = [
     ability: { name: 'Чар', description: '35% шанс целта да удари себе си за половин щети.', type: 'charm', chance: 0.35 }
   },
 
-  // ===== RARE (10) =====
+  // ===== RARE (8) =====
   {
     id: 'antoniopie', name: 'Антонио Пие', title: 'Вечният Купонджия',
     image: '/images/cards/antoniopie.png', rarity: 'rare',
@@ -102,25 +102,13 @@ const WARRIORS = [
     ability: { name: 'Газ до Дупка', description: 'Бонус щети = 20% от текущия HP на целта.', type: 'ram', hpPercent: 0.2 }
   },
   {
-    id: 'pavlinchimaev', name: 'Павлин Чимаев', title: 'Борецът',
-    image: '/images/cards/pavlinchimaev.jpg', rarity: 'rare',
-    atk: 7, def: 6,
-    ability: { name: 'Тейкдаун', description: 'Зашеметява целта и нанася +2 бонус щети.', type: 'takedown', bonusDmg: 2 }
-  },
-  {
     id: 'teodormuaythaya', name: 'Теодор Муай Тай', title: 'Ударът от Сянката',
     image: '/images/cards/teodormuaythaya.jpg', rarity: 'rare',
     atk: 7, def: 5,
     ability: { name: 'Комбо Удар', description: 'Намалява DEF на целта с 3 завинаги.', type: 'def_shred', shredValue: 3 }
   },
-  {
-    id: 'vulkutotkarnobatstreet', name: 'Вулкът от Карнобат Стрийт', title: 'Уолстрийт Измамникът',
-    image: '/images/cards/vulkutotkarnobatstreet.jpg', rarity: 'rare',
-    atk: 5, def: 6,
-    ability: { name: 'Схемата', description: 'Краде 1 spell от целта и +3 бонус щети.', type: 'scheme', bonusDmg: 3 }
-  },
 
-  // ===== EPIC (8) =====
+  // ===== EPIC (7) =====
   {
     id: 'antoniopashata', name: 'Антонио Пашата', title: 'Огледалният Силвър',
     image: '/images/cards/antoniopashata.png', rarity: 'epic',
@@ -131,7 +119,7 @@ const WARRIORS = [
     id: 'skultrupara', name: 'Скул Трупара', title: 'Жътварят на Души',
     image: '/images/cards/skultrupara.jpg', rarity: 'epic',
     atk: 9, def: 3,
-    ability: { name: 'Жътва', description: 'При елиминация на целта, лекува 10 HP.', type: 'reap', healOnKill: 10 }
+    ability: { name: 'Жътва', description: 'Краде 30% от нанесените щети като HP. При убийство: +15 HP.', type: 'reap', lifestealPercent: 0.3, healOnKill: 15 }
   },
   {
     id: 'teodorkapone', name: 'Теодор Капоне', title: 'Мафиотският Бос',
@@ -163,14 +151,8 @@ const WARRIORS = [
     atk: 9, def: 2,
     ability: { name: 'Точен Изстрел', description: 'Игнорира 100% от DEF на целта.', type: 'sniper' }
   },
-  {
-    id: 'mafiaborko', name: 'Мафия Борко', title: 'Кръстникът',
-    image: '/images/cards/mafiaborko.jpg', rarity: 'epic',
-    atk: 8, def: 5,
-    ability: { name: 'Поръчка', description: 'Маркира целта: +8 бонус щети ако я атакуваш отново.', type: 'contract', bonusDmg: 8 }
-  },
 
-  // ===== LEGENDARY (3) =====
+  // ===== LEGENDARY (4) =====
   {
     id: 'bezkuchki', name: 'Без Кучки', title: 'Тихият Хакер',
     image: '/images/cards/bezkuchki.png', rarity: 'legendary',
@@ -184,13 +166,19 @@ const WARRIORS = [
     ability: { name: '360 No Scope', description: 'Най-висока инициатива = двойни щети.', type: 'speed_kill', multiplier: 2 }
   },
   {
-    id: 'muaythayaIglavata', name: 'Муай Тай и Главата', title: 'Тагтиймът',
-    image: '/images/cards/muaythayaIglavata.jpg', rarity: 'legendary',
-    atk: 6, def: 6,
-    ability: { name: 'Тагтийм', description: 'Удря два пъти по 75% щети.', type: 'tag_team', hitMultiplier: 0.75 }
+    id: 'pavlinchimaev', name: 'Павлин Чимаев', title: 'Борецът',
+    image: '/images/cards/pavlinchimaev.jpg', rarity: 'legendary',
+    atk: 7, def: 6,
+    ability: { name: 'Тейкдаун', description: 'Зашеметява целта и нанася +2 бонус щети.', type: 'takedown', bonusDmg: 2 }
+  },
+  {
+    id: 'vulkutotkarnobatstreet', name: 'Вулкът от Карнобат Стрийт', title: 'Уолстрийт Измамникът',
+    image: '/images/cards/vulkutotkarnobatstreet.jpg', rarity: 'legendary',
+    atk: 5, def: 6,
+    ability: { name: 'Схемата', description: 'Краде 1 spell от целта и +3 бонус щети.', type: 'scheme', bonusDmg: 3 }
   },
 
-  // ===== SECRET (2) — ~5% chance to appear in draft =====
+  // ===== SECRET (3) — ~5% chance to appear in draft =====
   {
     id: 'marinskvidgeima', name: 'Марин Сквид Гейм', title: 'Играч 067',
     image: '/images/cards/marinskvidgeima.jpg', rarity: 'secret',
@@ -203,10 +191,31 @@ const WARRIORS = [
     atk: 7, def: 6,
     ability: { name: 'Рибен Капан', description: 'Краде случайна spell карта от целта.', type: 'spell_steal' }
   },
-
-  // ===== COSMIC (1) — ~2% chance, 3 effects =====
   {
-    id: 'sashkoebit', name: 'Сашко Битият', title: 'Оцелелият от Баща Му',
+    id: 'mafiaborko', name: 'Мафия Борко', title: 'Кръстникът',
+    image: '/images/cards/mafiaborko.jpg', rarity: 'secret',
+    atk: 8, def: 5,
+    ability: { name: 'Поръчка', description: 'Маркира целта: +8 бонус щети ако я атакуваш отново.', type: 'contract', bonusDmg: 8 }
+  },
+
+  // ===== COSMIC (2) — ~2% chance, 3 effects =====
+  {
+    id: 'muaythayaIglavata', name: 'Муай Тай и Главата', title: 'Тагтиймът',
+    image: '/images/cards/muaythayaIglavata.jpg', rarity: 'cosmic',
+    atk: 7, def: 7,
+    ability: {
+      name: 'Тагтийм Ултимейт',
+      description: 'Двоен удар по 85% щети | -3 получени щети | На всеки 3 рунда: стън + 5 по всички.',
+      type: 'cosmic_triple',
+      effects: [
+        { type: 'tag_strike', hitMultiplier: 0.85 },
+        { type: 'shield', value: 3 },
+        { type: 'finisher', stunDuration: 1, aoeDamage: 5, interval: 3 }
+      ]
+    }
+  },
+  {
+    id: 'sashkoebit', name: 'Сашко е бит', title: 'Оцелелият от Баща Му',
     image: '/images/cards/sashkoebit.png', rarity: 'cosmic',
     atk: 7, def: 6,
     ability: {
