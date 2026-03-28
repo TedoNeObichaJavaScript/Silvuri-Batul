@@ -369,6 +369,7 @@ class Game {
       if (p && p.stunned) {
         this.battleLog.push({ type: 'stunned', playerName: p.name, message: `💫 ${p.name} е зашеметен и пропуска хода!` });
         p.stunned = false;
+        p.frozen = false;
       }
       this.currentTurnIndex++;
     }
@@ -382,6 +383,8 @@ class Game {
     const attacker = this.players.get(socketId);
     const target = this.players.get(targetId);
     if (!attacker || attacker.eliminated) return { error: 'Елиминиран си!' };
+    // Clear attacker's own immunity — they've had their chance to respond
+    attacker.immune = false;
     if (!target || target.eliminated) return { error: 'Невалидна цел!' };
     if (targetId === socketId) return { error: 'Не можеш да атакуваш себе си!' };
     // Immunity check — skip if ALL other alive players are immune (no valid targets)
@@ -389,7 +392,7 @@ class Game {
       const allImmune = this.getAlivePlayers()
         .filter(p => p.id !== socketId)
         .every(p => p.immune);
-      if (!allImmune) return { error: 'Тази цел е имунна този рунд!' };
+      if (!allImmune) return { error: 'Тази цел е имунна до своя ход!' };
       // All targets immune → allow attack (edge case fallback)
     }
 
